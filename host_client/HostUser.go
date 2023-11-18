@@ -10,6 +10,7 @@ import (
 type HostUser struct {
 	Validate func() []error
 	Create func() []error
+	Delete func() []error
 }
 
 func newHostUser(username string) (*HostUser, []error) {
@@ -53,12 +54,25 @@ func newHostUser(username string) (*HostUser, []error) {
 		return nil
 	}
 
+
+	delete := func() []error {
+		shell_command := "dscl . -delete /Users/" + getUsername()
+		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		if std_error != nil {
+			return std_error
+		}
+		return nil
+	}
+
 	x := HostUser{
 		Validate: func() []error {
 			return validate()
 		},
 		Create: func() []error {
 			return create()
+		},
+		Delete: func() []error {
+			return delete()
 		},
 	}
 	setUsername(username)
