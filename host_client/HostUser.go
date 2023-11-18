@@ -34,6 +34,10 @@ func newHostUser(username string) (*HostUser, []error) {
 			errors = append(errors, fmt.Errorf("username does not start with holisticxyz_"))
 		}
 
+		if !strings.HasSuffix(temp_username, "_") {
+			errors = append(errors, fmt.Errorf("username does not end with _"))
+		}
+
 		username_errors := verify.ValidateUsername(temp_username)
 		if username_errors != nil {
 			errors = append(errors, username_errors...)
