@@ -2,15 +2,18 @@ package host_client
 
 import (
 	validate "github.com/matehaxor03/holistic_validator/validate"
+	common "github.com/matehaxor03/holistic_common/common"
 	"strings"
 	"fmt"
 )
 
 type HostUser struct {
 	Validate func() []error
+	Create func() []error
 }
 
 func newHostUser(username string) (*HostUser, []error) {
+	bashCommand := common.NewBashCommand()
 	verify := validate.NewValidator()
 	var this_username string
 
@@ -41,9 +44,21 @@ func newHostUser(username string) (*HostUser, []error) {
 		return nil
 	}
 
+	create := func() []error {
+		shell_command := "dscl . -create /Users/" + getUsername()
+		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		if std_error != nil {
+			return std_error
+		}
+		return nil
+	}
+
 	x := HostUser{
 		Validate: func() []error {
 			return validate()
+		},
+		Create: func() []error {
+			return create()
 		},
 	}
 	setUsername(username)
