@@ -54,7 +54,6 @@ func newHostUser(username string) (*HostUser, []error) {
 		return nil
 	}
 
-
 	delete := func() []error {
 		shell_command := "dscl . -delete /Users/" + getUsername()
 		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
