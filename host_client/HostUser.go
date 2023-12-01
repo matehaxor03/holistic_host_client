@@ -12,6 +12,7 @@ type HostUser struct {
 	Create func() []error
 	Delete func() []error
 	Exists func() (*bool, []error)
+	CreateHomeDirectory func() []error
 }
 
 func newHostUser(username string) (*HostUser, []error) {
@@ -92,7 +93,6 @@ func newHostUser(username string) (*HostUser, []error) {
 			return nil
 		}
 
-
 		shell_command := "dscl . -create /Users/" + getUsername()
 		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_error != nil {
@@ -119,6 +119,26 @@ func newHostUser(username string) (*HostUser, []error) {
 		return nil
 	}
 
+	createHomeDirectory := func() []error {
+		var errors []error
+		exists, exists_error := exists()
+		if exists_error != nil {
+			return exists_error
+		}
+
+		if !*exists {
+			errors = append(errors, fmt.Errorf("user does not exist"))
+			return errors
+		}
+
+		shell_command := "sudo dscl . -create /Users/" + getUsername() + " NFSHomeDirectory /Users/" + getUsername()
+		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		if std_error != nil {
+			return std_error
+		}
+		return nil
+	}
+
 	x := HostUser{
 		Validate: func() []error {
 			return validate()
@@ -131,6 +151,9 @@ func newHostUser(username string) (*HostUser, []error) {
 		},
 		Delete: func() []error {
 			return delete()
+		},
+		CreateHomeDirectory: func() []error {
+			return createHomeDirectory()
 		},
 	}
 	setUsername(username)
