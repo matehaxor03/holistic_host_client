@@ -132,7 +132,7 @@ func newHostUser(username string) (*HostUser, []error) {
 			return errors
 		}
 
-		shell_command := "sudo dscl . -create /Users/" + getUsername() + " NFSHomeDirectory /Users/" + getUsername()
+		shell_command := "dscl . -create /Users/" + getUsername() + " NFSHomeDirectory /Users/" + getUsername()
 		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_error != nil {
 			return std_error
@@ -152,7 +152,7 @@ func newHostUser(username string) (*HostUser, []error) {
 			return errors
 		}
 
-		shell_command := "sudo dscl . -create /Users/" + getUsername() + " UserShell /bin/bash"
+		shell_command := "dscl . -create /Users/" + getUsername() + " UserShell /bin/bash"
 		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_error != nil {
 			return std_error
