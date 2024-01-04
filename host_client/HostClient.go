@@ -1,6 +1,9 @@
 package host_client
 
 import (
+	"fmt"
+	"os"
+	validate "github.com/matehaxor03/holistic_validator/validate"	
 )
 
 type HostClient struct {
@@ -8,9 +11,11 @@ type HostClient struct {
 	CreateHostUser func(username string) (*HostUser, []error)
 	DeleteHostUser func(username string) ([]error)
 	Ramdisk func(disk_name string,block_size uint64) (*Ramdisk, []error)
+	GetEnviornmentVariable func(environment_variable_name string) (*string, []error)
 }
 
 func NewHostClient() (*HostClient, []error) {
+	verify := validate.NewValidator()
 	
 	createHostUser := func(username string) (*HostUser, []error) {
 		host_user, host_user_errors := newHostUser(username)
@@ -53,6 +58,28 @@ func NewHostClient() (*HostClient, []error) {
 		return ramdisk, nil
 	}
 
+	get_environment_variable := func(environment_variable string) (*string, []error) {
+		var errors []error
+
+		environment_variable_errors := verify.ValidateEnvironmentVariableName(environment_variable) 
+		if environment_variable_errors != nil {
+			return nil, environment_variable_errors
+		}
+
+		_, found := os.LookupEnv(environment_variable)
+		if !found {
+			errors = append(errors, fmt.Errorf("environment variable: "  + environment_variable + " does not exist"))
+		}
+
+		if len(errors) > 0 {
+			return nil, errors
+		}
+
+		environment_variable_value := os.Getenv(environment_variable) 
+
+		return &environment_variable_value, nil
+	}
+
 	validate := func() []error {
 		return nil
 	}
@@ -69,6 +96,9 @@ func NewHostClient() (*HostClient, []error) {
 		},
 		Ramdisk: func(disk_name string, block_size uint64) (*Ramdisk, []error) {
 			return ramdisk(disk_name, block_size)
+		},
+		GetEnviornmentVariable: func(environment_variable_name string) (*string, []error) {
+			return get_environment_variable(environment_variable_name)
 		},
 	}
 	//setHostClient(&x)
