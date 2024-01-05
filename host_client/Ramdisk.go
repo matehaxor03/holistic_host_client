@@ -55,7 +55,7 @@ func newRamdisk(disk_name string, block_size uint64) (*Ramdisk, []error) {
 	}
 
 	create := func() []error {
-		shell_command := "diskutil erasevolume HFS+ \"" + getDiskName() + "\" `hdiutil attach -nomount ram://" + strconv.FormatUint(getBlockSize(), 10)
+		shell_command := "diskutil erasevolume HFS+ \"" + getDiskName() + "\" `hdiutil attach -nomount ram://" + strconv.FormatUint(getBlockSize(), 10) + "`"
 		return bashCommand.ExecuteUnsafeCommandSimple(shell_command)
 	}
 
