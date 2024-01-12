@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	validate "github.com/matehaxor03/holistic_validator/validate"	
+	json "github.com/matehaxor03/holistic_json/json"	
 )
 
 type HostClient struct {
@@ -12,6 +13,8 @@ type HostClient struct {
 	DeleteHostUser func(username string) ([]error)
 	Ramdisk func(disk_name string,block_size uint64) (*Ramdisk, []error)
 	GetEnviornmentVariable func(environment_variable_name string) (*string, []error)
+	GetEnviornmentVariableValue func(environment_variable_name string) (*json.Value, []error)
+
 }
 
 func NewHostClient() (*HostClient, []error) {
@@ -80,6 +83,15 @@ func NewHostClient() (*HostClient, []error) {
 		return &environment_variable_value, nil
 	}
 
+	get_environment_variable_value := func(environment_variable string) (*json.Value, []error) {
+		env_variable_string_value, env_variable_string_value_errors :=  get_environment_variable(environment_variable)
+		if env_variable_string_value_errors != nil {
+			return nil, env_variable_string_value_errors
+		}
+
+		return json.NewValue(env_variable_string_value), nil
+	}
+
 	validate := func() []error {
 		return nil
 	}
@@ -100,9 +112,10 @@ func NewHostClient() (*HostClient, []error) {
 		GetEnviornmentVariable: func(environment_variable_name string) (*string, []error) {
 			return get_environment_variable(environment_variable_name)
 		},
+		GetEnviornmentVariableValue: func(environment_variable_name string) (*json.Value, []error) {
+			return get_environment_variable_value(environment_variable_name)
+		},
 	}
-	//setHostClient(&x)
-
 	errors := validate()
 
 	if errors != nil {
