@@ -6,13 +6,13 @@ import (
 	"os"
 )
 
-type HostAbsoluteDirectory struct {
+type AbsoluteDirectory struct {
 	Validate func() []error
 	Create func() []error
 	Exists func() bool
 }
 
-func newHostAbsoluteDirectory(path []string) (*HostAbsoluteDirectory, []error) {
+func newAbsoluteDirectory(path []string) (*AbsoluteDirectory, []error) {
 	verify := validate.NewValidator()
 	var this_path []string
 
@@ -68,7 +68,7 @@ func newHostAbsoluteDirectory(path []string) (*HostAbsoluteDirectory, []error) {
 		return nil
 	}
 
-	x := HostAbsoluteDirectory{
+	x := AbsoluteDirectory{
 		Validate: func() []error {
 			return validate()
 		},
