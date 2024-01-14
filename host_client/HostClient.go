@@ -14,7 +14,7 @@ type HostClient struct {
 	Ramdisk func(disk_name string,block_size uint64) (*Ramdisk, []error)
 	GetEnviornmentVariable func(environment_variable_name string) (*string, []error)
 	GetEnviornmentVariableValue func(environment_variable_name string) (*json.Value, []error)
-
+	HostAbsoluteDirectory func(path []string) (*HostAbsoluteDirectory, []error)
 }
 
 func NewHostClient() (*HostClient, []error) {
@@ -108,6 +108,9 @@ func NewHostClient() (*HostClient, []error) {
 		},
 		Ramdisk: func(disk_name string, block_size uint64) (*Ramdisk, []error) {
 			return ramdisk(disk_name, block_size)
+		},
+		HostAbsoluteDirectory: func(path []string) (*HostAbsoluteDirectory, []error) {
+			return newHostAbsoluteDirectory(path)
 		},
 		GetEnviornmentVariable: func(environment_variable_name string) (*string, []error) {
 			return get_environment_variable(environment_variable_name)
