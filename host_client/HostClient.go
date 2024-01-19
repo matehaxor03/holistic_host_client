@@ -9,6 +9,7 @@ import (
 
 type HostClient struct {
 	Validate func() []error
+	HostUser func(username string) (*HostUser, []error)
 	CreateHostUser func(username string) (*HostUser, []error)
 	DeleteHostUser func(username string) ([]error)
 	Ramdisk func(disk_name string,block_size uint64) (*Ramdisk, []error)
@@ -50,15 +51,6 @@ func NewHostClient() (*HostClient, []error) {
 		}
 
 		return nil
-	}
-
-	ramdisk := func(disk_name string, block_size uint64) (*Ramdisk, []error) {
-		ramdisk, ramdisk_errors := newRamdisk(disk_name, block_size)
-		if ramdisk_errors != nil {
-			return nil, ramdisk_errors
-		}
-
-		return ramdisk, nil
 	}
 
 	get_environment_variable := func(environment_variable string) (*string, []error) {
@@ -107,7 +99,10 @@ func NewHostClient() (*HostClient, []error) {
 			return deleteHostUser(username)
 		},
 		Ramdisk: func(disk_name string, block_size uint64) (*Ramdisk, []error) {
-			return ramdisk(disk_name, block_size)
+			return newRamdisk(disk_name, block_size)
+		},
+		HostUser: func(username string) (*HostUser, []error) {
+			return newHostUser(username)
 		},
 		AbsoluteDirectory: func(path []string) (*AbsoluteDirectory, []error) {
 			return newAbsoluteDirectory(path)

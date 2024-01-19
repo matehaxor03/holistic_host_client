@@ -85,15 +85,6 @@ func newHostUser(username string) (*HostUser, []error) {
 	}
 
 	create := func() []error {
-		exists, exists_error := exists()
-		if exists_error != nil {
-			return exists_error
-		}
-
-		if *exists {
-			return nil
-		}
-
 		shell_command := "dscl . -create /Users/" + getUsername()
 		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_error != nil {
@@ -103,15 +94,6 @@ func newHostUser(username string) (*HostUser, []error) {
 	}
 
 	delete := func() []error {
-		exists, exists_error := exists()
-		if exists_error != nil {
-			return exists_error
-		}
-
-		if !*exists {
-			return nil
-		}
-
 		shell_command := "dscl . -delete /Users/" + getUsername()
 		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_error != nil {
