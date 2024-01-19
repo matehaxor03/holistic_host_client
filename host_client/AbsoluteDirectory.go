@@ -10,6 +10,7 @@ type AbsoluteDirectory struct {
 	Validate func() []error
 	Create func() []error
 	Exists func() bool
+	GetPath func() []string
 }
 
 func newAbsoluteDirectory(path []string) (*AbsoluteDirectory, []error) {
@@ -77,6 +78,9 @@ func newAbsoluteDirectory(path []string) (*AbsoluteDirectory, []error) {
 		},
 		Exists: func() (bool) {
 			return exists()
+		},
+		GetPath: func() ([]string) {
+			return getPath()
 		},
 	}
 	setPath(path)
