@@ -37,7 +37,7 @@ func newRamdisk(disk_name string, block_size uint64) (*Ramdisk, []error) {
 	}
 
 	getPathAsString := func() string {
-		return "/Volume/" + getDiskName()
+		return "/Volumes/" + getDiskName()
 	}
 
 	exists := func() (bool) {
