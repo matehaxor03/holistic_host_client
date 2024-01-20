@@ -5,11 +5,13 @@ import (
 	common "github.com/matehaxor03/holistic_common/common"
 	"fmt"
 	"strconv"
+	"os"
 )
 
 type Ramdisk struct {
 	Validate func() []error
 	Create func() []error
+	Exists func() bool
 }
 
 func newRamdisk(disk_name string, block_size uint64) (*Ramdisk, []error) {
@@ -32,6 +34,18 @@ func newRamdisk(disk_name string, block_size uint64) (*Ramdisk, []error) {
 
 	getBlockSize := func() uint64 {
 		return this_block_size
+	}
+
+	getPathAsString := func() string {
+		return "/Volume/" + getDiskName()
+	}
+
+	exists := func() (bool) {
+		exists := true
+		if _, stat_error := os.Stat(getPathAsString()); os.IsNotExist(stat_error) {
+			exists = false
+		}
+		return exists
 	}
 
 	validate := func() []error {
@@ -65,6 +79,9 @@ func newRamdisk(disk_name string, block_size uint64) (*Ramdisk, []error) {
 		},
 		Create: func() []error {
 			return create()
+		},
+		Exists: func() bool {
+			return exists()
 		},
 	}
 	setDiskName(disk_name)
