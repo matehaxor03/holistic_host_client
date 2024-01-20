@@ -48,9 +48,9 @@ func newAbsoluteDirectory(path []string) (*AbsoluteDirectory, []error) {
 	}
 
 	exists := func() (bool) {
-		exists := true
-		if _, stat_error := os.Stat(getPathAsString()); os.IsNotExist(stat_error) {
-			exists = false
+		exists := false
+		if _, err := os.Stat(getPathAsString()); err == nil || os.IsExist(err) {
+			exists = true
 		}
 		return exists
 	}
