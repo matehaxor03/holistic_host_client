@@ -57,7 +57,7 @@ func newHostUser(username string) (*HostUser, []error) {
 		shell_command := "dscl . read /Users/" + getUsername() + " RecordName"
 		std_outs, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		
-		var result *bool
+		result := false
 		if std_errors != nil {
 			errors = append(errors, std_errors...)
 		}
@@ -65,8 +65,8 @@ func newHostUser(username string) (*HostUser, []error) {
 		if len(errors) > 0 {
 			for _, err := range errors {
 				if strings.Contains(fmt.Sprintf("%s", err), "RecordNotFound") {
-					*result = false
-					return result, nil
+					result = false
+					return &result, nil
 				}
 			}
 
@@ -74,8 +74,8 @@ func newHostUser(username string) (*HostUser, []error) {
 		} else {
 			for _, std_out := range std_outs {
 				if strings.Contains(std_out, "RecordName:") {
-					*result = true
-					return result, nil
+					result = true
+					return &result, nil
 				}
 			}
 
