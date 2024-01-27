@@ -10,8 +10,6 @@ import (
 type HostClient struct {
 	Validate func() []error
 	HostUser func(username string) (*HostUser, []error)
-	CreateHostUser func(username string) (*HostUser, []error)
-	DeleteHostUser func(username string) ([]error)
 	Ramdisk func(disk_name string,block_size uint64) (*Ramdisk, []error)
 	GetEnviornmentVariable func(environment_variable_name string) (*string, []error)
 	GetEnviornmentVariableValue func(environment_variable_name string) (*json.Value, []error)
@@ -20,38 +18,6 @@ type HostClient struct {
 
 func NewHostClient() (*HostClient, []error) {
 	verify := validate.NewValidator()
-	
-	createHostUser := func(username string) (*HostUser, []error) {
-		host_user, host_user_errors := newHostUser(username)
-		
-		if host_user_errors != nil {
-			return nil, host_user_errors
-		}
-
-		create_errors := host_user.Create()
-		
-		if create_errors != nil {
-			return nil, create_errors
-		}
-
-		return host_user, nil
-	}
-
-	deleteHostUser := func(username string) ([]error) {
-		host_user, host_user_errors := newHostUser(username)
-		
-		if host_user_errors != nil {
-			return host_user_errors
-		}
-
-		delete_errors := host_user.Delete()
-		
-		if delete_errors != nil {
-			return delete_errors
-		}
-
-		return nil
-	}
 
 	get_environment_variable := func(environment_variable string) (*string, []error) {
 		var errors []error
@@ -91,12 +57,6 @@ func NewHostClient() (*HostClient, []error) {
 	x := HostClient{
 		Validate: func() []error {
 			return validate()
-		},
-		CreateHostUser: func(username string) (*HostUser, []error) {
-			return createHostUser(username)
-		},
-		DeleteHostUser: func(username string) ([]error) {
-			return deleteHostUser(username)
 		},
 		Ramdisk: func(disk_name string, block_size uint64) (*Ramdisk, []error) {
 			return newRamdisk(disk_name, block_size)
