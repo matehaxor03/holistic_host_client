@@ -17,6 +17,7 @@ type HostUser struct {
 	EnableBinBash func() []error
 	GetUsername func() string
 	SetUniqueId func(unique_id uint64) []error
+	SetPrimaryGroupId func(primary_group_id uint64) []error
 }
 
 func newHostUser(username string) (*HostUser, []error) {
@@ -114,6 +115,15 @@ func newHostUser(username string) (*HostUser, []error) {
 		return nil
 	}
 
+	setPrimaryGroupId := func(primary_group_id uint64) []error {
+		shell_command := "dscl . -create /Users/" + getUsername() + " PrimaryGroupID " + strconv.FormatUint(primary_group_id, 10)
+		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		if std_error != nil {
+			return std_error
+		}
+		return nil
+	}
+
 	createHomeDirectoryAbsoluteDirectory := func(absolute_directory AbsoluteDirectory) []error {
 		shell_command := "dscl . -create /Users/" + getUsername() + " NFSHomeDirectory " + absolute_directory.GetPathAsString()
 		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
@@ -167,6 +177,9 @@ func newHostUser(username string) (*HostUser, []error) {
 		},
 		SetUniqueId: func(unique_id uint64) []error {
 			return setUniqueId(unique_id)
+		},
+		SetPrimaryGroupId: func(primary_group_id uint64) []error {
+			return setPrimaryGroupId(primary_group_id)
 		},
 	}
 	setUsername(username)

@@ -15,6 +15,7 @@ type Group struct {
 	GetGroupName func() string
 	Exists func() (*bool, []error)
 	SetUniqueId func(unique_id uint64) []error
+	AddUser func(user HostUser) []error
 }
 
 func newGroup(group_name string) (*Group, []error) {
@@ -112,6 +113,15 @@ func newGroup(group_name string) (*Group, []error) {
 		return nil
 	}
 
+	addUser := func(user HostUser) []error {
+		shell_command := "dscl . append /Groups/" + getGroupName() + " GroupMembership " + user.GetUsername()
+		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		if std_error != nil {
+			return std_error
+		}
+		return nil
+	}
+
 	x := Group{
 		Validate: func() []error {
 			return validate()
@@ -130,6 +140,9 @@ func newGroup(group_name string) (*Group, []error) {
 		},
 		SetUniqueId: func(unique_id uint64) []error {
 			return setUniqueId(unique_id)
+		},
+		AddUser: func(user HostUser) []error {
+			return addUser(user)
 		},
 	}
 	setGroupName(group_name)
