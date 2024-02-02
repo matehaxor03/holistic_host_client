@@ -74,7 +74,7 @@ func newAbsoluteDirectory(path []string) (*AbsoluteDirectory, []error) {
 	}
 
 	setOwnerRecursive := func(host_user HostUser) []error {
-		shell_command := "chown -R " + host_user.GetUsername() + ": " + getPathAsString()
+		shell_command := "chown -R " + host_user.GetUsername() + " " + getPathAsString()
 		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_error != nil {
 			return std_error
