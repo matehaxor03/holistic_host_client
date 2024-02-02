@@ -2,6 +2,7 @@ package host_client
 
 import (
 	validate "github.com/matehaxor03/holistic_validator/validate"
+	common "github.com/matehaxor03/holistic_common/common"
 	"path/filepath"
 	"os"
 )
@@ -12,9 +13,11 @@ type AbsoluteDirectory struct {
 	Exists func() bool
 	GetPath func() []string
 	GetPathAsString func() string
+	SetOwnerRecursive func(host_user HostUser) []error
 }
 
 func newAbsoluteDirectory(path []string) (*AbsoluteDirectory, []error) {
+	bashCommand := common.NewBashCommand()
 	verify := validate.NewValidator()
 	var this_path []string
 
@@ -70,6 +73,15 @@ func newAbsoluteDirectory(path []string) (*AbsoluteDirectory, []error) {
 		return nil
 	}
 
+	setOwnerRecursive := func(host_user HostUser) []error {
+		shell_command := "chown -R " + host_user.GetUsername() + " " + getPathAsString()
+		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		if std_error != nil {
+			return std_error
+		}
+		return nil
+	}
+
 	x := AbsoluteDirectory{
 		Validate: func() []error {
 			return validate()
@@ -85,6 +97,9 @@ func newAbsoluteDirectory(path []string) (*AbsoluteDirectory, []error) {
 		},
 		GetPathAsString: func() string {
 			return getPathAsString()
+		},
+		SetOwnerRecursive: func(host_user HostUser) []error {
+			return setOwnerRecursive(host_user)
 		},
 	}
 	setPath(path)

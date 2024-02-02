@@ -14,6 +14,7 @@ type HostUser struct {
 	Exists func() (*bool, []error)
 	CreateHomeDirectoryAbsoluteDirectory func(absolute_directory AbsoluteDirectory) []error
 	EnableBinBash func() []error
+	GetUsername func() string
 }
 
 func newHostUser(username string) (*HostUser, []error) {
@@ -149,6 +150,9 @@ func newHostUser(username string) (*HostUser, []error) {
 		},
 		EnableBinBash: func() []error {
 			return enableBinBash()
+		},
+		GetUsername: func() string {
+			return getUsername()
 		},
 	}
 	setUsername(username)
