@@ -12,6 +12,7 @@ type Ramdisk struct {
 	Validate func() []error
 	Create func() []error
 	Exists func() bool
+	EnableOwnership func() []error
 }
 
 func newRamdisk(disk_name string, block_size uint64) (*Ramdisk, []error) {
@@ -73,6 +74,11 @@ func newRamdisk(disk_name string, block_size uint64) (*Ramdisk, []error) {
 		return bashCommand.ExecuteUnsafeCommandSimple(shell_command)
 	}
 
+	enableOwnership := func() []error {
+		shell_command := "diskutil enableOwnership " + getDiskName()
+		return bashCommand.ExecuteUnsafeCommandSimple(shell_command)
+	}
+
 	x := Ramdisk{
 		Validate: func() []error {
 			return validate()
@@ -82,6 +88,9 @@ func newRamdisk(disk_name string, block_size uint64) (*Ramdisk, []error) {
 		},
 		Exists: func() bool {
 			return exists()
+		},
+		EnableOwnership: func() []error {
+			return enableOwnership()
 		},
 	}
 	setDiskName(disk_name)
