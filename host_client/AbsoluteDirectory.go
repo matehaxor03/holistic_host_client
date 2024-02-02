@@ -13,7 +13,7 @@ type AbsoluteDirectory struct {
 	Exists func() bool
 	GetPath func() []string
 	GetPathAsString func() string
-	SetOwnerRecursive func(host_user HostUser) []error
+	SetOwnerRecursive func(host_user HostUser, group Group) []error
 }
 
 func newAbsoluteDirectory(path []string) (*AbsoluteDirectory, []error) {
@@ -73,8 +73,8 @@ func newAbsoluteDirectory(path []string) (*AbsoluteDirectory, []error) {
 		return nil
 	}
 
-	setOwnerRecursive := func(host_user HostUser) []error {
-		shell_command := "chown -R " + host_user.GetUsername() + " " + getPathAsString()
+	setOwnerRecursive := func(host_user HostUser, group Group) []error {
+		shell_command := "chown -R " + host_user.GetUsername() + ":" + group.GetGroupName() + " " + getPathAsString()
 		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_error != nil {
 			return std_error
@@ -98,8 +98,8 @@ func newAbsoluteDirectory(path []string) (*AbsoluteDirectory, []error) {
 		GetPathAsString: func() string {
 			return getPathAsString()
 		},
-		SetOwnerRecursive: func(host_user HostUser) []error {
-			return setOwnerRecursive(host_user)
+		SetOwnerRecursive: func(host_user HostUser, group Group) []error {
+			return setOwnerRecursive(host_user, group)
 		},
 	}
 	setPath(path)
