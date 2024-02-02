@@ -34,12 +34,8 @@ func newHostUser(username string) (*HostUser, []error) {
 		var errors []error
 		temp_username := getUsername()
 
-		if !strings.HasPrefix(temp_username, "holisticxyz_") {
-			errors = append(errors, fmt.Errorf("username does not start with holisticxyz_"))
-		}
-
-		if !strings.HasSuffix(temp_username, "_") {
-			errors = append(errors, fmt.Errorf("username does not end with _"))
+		if !strings.HasPrefix(temp_username, "holisticxyz") {
+			errors = append(errors, fmt.Errorf("username does not start with holisticxyz"))
 		}
 
 		username_errors := verify.ValidateUsername(temp_username)
