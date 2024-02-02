@@ -5,6 +5,7 @@ import (
 	common "github.com/matehaxor03/holistic_common/common"
 	"strings"
 	"fmt"
+	"strconv"
 )
 
 type HostUser struct {
@@ -15,6 +16,7 @@ type HostUser struct {
 	CreateHomeDirectoryAbsoluteDirectory func(absolute_directory AbsoluteDirectory) []error
 	EnableBinBash func() []error
 	GetUsername func() string
+	SetUniqueId func(unique_id uint64) []error
 }
 
 func newHostUser(username string) (*HostUser, []error) {
@@ -34,8 +36,12 @@ func newHostUser(username string) (*HostUser, []error) {
 		var errors []error
 		temp_username := getUsername()
 
-		if !strings.HasPrefix(temp_username, "holisticxyz") {
-			errors = append(errors, fmt.Errorf("username does not start with holisticxyz"))
+		if !strings.HasPrefix(temp_username, "holisticxyz_") {
+			errors = append(errors, fmt.Errorf("username does not start with holisticxyz_"))
+		}
+
+		if !strings.HasSuffix(temp_username, "_") {
+			errors = append(errors, fmt.Errorf("username does not end with _"))
 		}
 
 		username_errors := verify.ValidateUsername(temp_username)
@@ -99,6 +105,15 @@ func newHostUser(username string) (*HostUser, []error) {
 		return nil
 	}
 
+	setUniqueId := func(unique_id uint64) []error {
+		shell_command := "dscl . -create /Users/" + getUsername() + " UniqueID " + strconv.FormatUint(unique_id, 10)
+		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		if std_error != nil {
+			return std_error
+		}
+		return nil
+	}
+
 	createHomeDirectoryAbsoluteDirectory := func(absolute_directory AbsoluteDirectory) []error {
 		shell_command := "dscl . -create /Users/" + getUsername() + " NFSHomeDirectory " + absolute_directory.GetPathAsString()
 		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
@@ -149,6 +164,9 @@ func newHostUser(username string) (*HostUser, []error) {
 		},
 		GetUsername: func() string {
 			return getUsername()
+		},
+		SetUniqueId: func(unique_id uint64) []error {
+			return setUniqueId(unique_id)
 		},
 	}
 	setUsername(username)
