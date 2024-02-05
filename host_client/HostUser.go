@@ -63,6 +63,7 @@ func newHostUser(username string) (*HostUser, []error) {
 		
 		result := false
 		if std_errors != nil {
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
 			errors = append(errors, std_errors...)
 		}
 
@@ -90,45 +91,50 @@ func newHostUser(username string) (*HostUser, []error) {
 
 	create := func() []error {
 		shell_command := "dscl . -create /Users/" + getUsername()
-		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
-		if std_error != nil {
-			return std_error
+		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		if std_errors != nil {
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			return std_errors
 		}
 		return nil
 	}
 
 	delete := func() []error {
 		shell_command := "dscl . -delete /Users/" + getUsername()
-		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
-		if std_error != nil {
-			return std_error
+		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		if std_errors != nil {
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			return std_errors
 		}
 		return nil
 	}
 
 	setUniqueId := func(unique_id uint64) []error {
 		shell_command := "dscl . -create /Users/" + getUsername() + " UniqueID " + strconv.FormatUint(unique_id, 10)
-		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
-		if std_error != nil {
-			return std_error
+		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		if std_errors != nil {
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			return std_errors
 		}
 		return nil
 	}
 
 	setPrimaryGroupId := func(primary_group_id uint64) []error {
 		shell_command := "dscl . -create /Users/" + getUsername() + " PrimaryGroupID " + strconv.FormatUint(primary_group_id, 10)
-		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
-		if std_error != nil {
-			return std_error
+		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		if std_errors != nil {
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			return std_errors
 		}
 		return nil
 	}
 
 	createHomeDirectoryAbsoluteDirectory := func(absolute_directory AbsoluteDirectory) []error {
 		shell_command := "dscl . -create /Users/" + getUsername() + " NFSHomeDirectory " + absolute_directory.GetPathAsString()
-		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
-		if std_error != nil {
-			return std_error
+		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		if std_errors != nil {
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			return std_errors
 		}
 		return nil
 	}
@@ -146,9 +152,10 @@ func newHostUser(username string) (*HostUser, []error) {
 		}
 
 		shell_command := "dscl . -create /Users/" + getUsername() + " UserShell /bin/bash"
-		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
-		if std_error != nil {
-			return std_error
+		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		if std_errors != nil {
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			return std_errors
 		}
 		return nil
 	}
