@@ -61,6 +61,7 @@ func newGroup(group_name string) (*Group, []error) {
 		
 		result := false
 		if std_errors != nil {
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
 			errors = append(errors, std_errors...)
 		}
 
@@ -88,36 +89,40 @@ func newGroup(group_name string) (*Group, []error) {
 
 	create := func() []error {
 		shell_command := "dscl . -create /Groups/" + getGroupName()
-		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
-		if std_error != nil {
-			return std_error
+		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		if std_errors != nil {
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			return std_errors
 		}
 		return nil
 	}
 
 	delete := func() []error {
 		shell_command := "dscl . -delete /Groups/" + getGroupName()
-		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
-		if std_error != nil {
-			return std_error
+		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		if std_errors != nil {
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			return std_errors
 		}
 		return nil
 	}
 
 	setUniqueId := func(unique_id uint64) []error {
 		shell_command := "dscl . -create /Groups/" + getGroupName() + " gid " + strconv.FormatUint(unique_id, 10)
-		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
-		if std_error != nil {
-			return std_error
+		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		if std_errors != nil {
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			return std_errors
 		}
 		return nil
 	}
 
 	addUser := func(user HostUser) []error {
 		shell_command := "dscl . append /Groups/" + getGroupName() + " GroupMembership " + user.GetUsername()
-		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
-		if std_error != nil {
-			return std_error
+		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		if std_errors != nil {
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			return std_errors
 		}
 		return nil
 	}
