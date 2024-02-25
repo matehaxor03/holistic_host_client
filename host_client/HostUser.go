@@ -34,6 +34,7 @@ func newHostUser(host Host, user User) HostUser {
 		temp_user := getUser()
 		absolute_directory, absolute_directory_errors := temp_user.GetHomeDirectoryAbsoluteDirectory()
 		if absolute_directory_errors != nil {
+			fmt.Println("absolute_directory_errors")
 			return absolute_directory_errors
 		}
 
@@ -42,18 +43,21 @@ func newHostUser(host Host, user User) HostUser {
 
 		ssh_directory, ssh_directory_errors := newAbsoluteDirectory(absolute_ssh_directory_path)
 		if ssh_directory_errors != nil {
+			fmt.Println("ssh_directory_errors")
 			return ssh_directory_errors
 		}
 
 		if !ssh_directory.Exists() {
 			ssh_directory_create_errors := ssh_directory.Create()
 			if ssh_directory_create_errors != nil {
+				fmt.Println("ssh_directory_create_errors")
 				return ssh_directory_create_errors
 			}
 
 			current_user := getUser()
 			current_user_group, current_user_group_errors := current_user.GetPrimaryGroup()
 			if current_user_group_errors != nil {
+				fmt.Println("current_user_group_errors")
 				return current_user_group_errors
 			}
 
@@ -64,6 +68,7 @@ func newHostUser(host Host, user User) HostUser {
 
 			set_current_owner_errors := ssh_directory.SetOwnerRecursive(current_user, *current_user_group)
 			if set_current_owner_errors != nil {
+				fmt.Println("set_current_owner_errors")
 				return set_current_owner_errors
 			}
 		}
