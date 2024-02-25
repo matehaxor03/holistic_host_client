@@ -12,7 +12,7 @@ type HostUser struct {
 	GenerateSSHKey func(other HostUser) []error
 }
 
-func newHostUser(host Host, user User) (*HostUser, []error) {
+func newHostUser(host Host, user User) HostUser {
 	bashCommand := common.NewBashCommand()
 	this_host := host
 	this_user := user
@@ -90,6 +90,6 @@ func newHostUser(host Host, user User) (*HostUser, []error) {
 		},
 	}
 
-	return &x, nil
+	return x
 }
 
