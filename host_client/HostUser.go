@@ -2,6 +2,7 @@ package host_client
 
 import (
 	common "github.com/matehaxor03/holistic_common/common"
+	"fmt"
 )
 
 type HostUser struct {
@@ -29,6 +30,7 @@ func newHostUser(host Host, user User) (*HostUser, []error) {
 	}
 
 	generate_ssh_key := func(other HostUser) []error {
+		var errors []error
 		temp_user := getUser()
 		absolute_directory, absolute_directory_errors := temp_user.GetHomeDirectoryAbsoluteDirectory()
 		if absolute_directory_errors != nil {
@@ -49,8 +51,25 @@ func newHostUser(host Host, user User) (*HostUser, []error) {
 				return ssh_directory_create_errors
 			}
 
-			//todo set ownership primary user id and others
+			current_user := getUser()
+			current_user_group, current_user_group_errors := current_user.GetPrimaryGroup()
+			if current_user_group_errors != nil {
+				return current_user_group_errors
+			}
+
+			if current_user_group == nil {
+				errors = append(errors, fmt.Errorf("current user does not have a group"))
+				return errors
+			}
+
+			set_current_owner_errors := ssh_directory.SetOwnerRecursive(current_user, *current_user_group)
+			if set_current_owner_errors != nil {
+				return set_current_owner_errors
+			}
 		}
+
+		//todo create other user ssh directory
+		//todo append ssh pub key to other user if it doesn't exist
 
 		shell_command := "ssh-keygen -b 2048 -t rsa  -f " + ssh_directory.GetPathAsString() + "/" + other.GetFullyQualifiedUsername() + " -C " + other.GetFullyQualifiedUsername() + " -P \"\""
 		return bashCommand.ExecuteUnsafeCommandSimple(shell_command)
