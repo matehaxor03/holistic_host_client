@@ -17,6 +17,7 @@ type HostClient struct {
 	GetEnviornmentVariableValue func(environment_variable_name string) (*json.Value, []error)
 	AbsoluteDirectory func(path []string) (*AbsoluteDirectory, []error)
 	HostUser func(host Host, user User) HostUser
+	AbsoluteFile func(directory AbsoluteDirectory, filename string) (*AbsoluteFile, []error)
 }
 
 func NewHostClient() (*HostClient, []error) {
@@ -75,6 +76,9 @@ func NewHostClient() (*HostClient, []error) {
 		},
 		AbsoluteDirectory: func(path []string) (*AbsoluteDirectory, []error) {
 			return newAbsoluteDirectory(path)
+		},
+		AbsoluteFile: func(directory AbsoluteDirectory, filename string) (*AbsoluteFile, []error) {
+			return newAbsoluteFile(directory, filename)
 		},
 		GetEnviornmentVariable: func(environment_variable_name string) (*string, []error) {
 			return get_environment_variable(environment_variable_name)
