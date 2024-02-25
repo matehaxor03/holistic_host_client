@@ -153,10 +153,8 @@ func newUser(username string) (*User, []error) {
 					raw_path := strings.TrimPrefix(std_out, "NFSHomeDirectory:")
 					raw_path = strings.TrimSpace(raw_path)
 					parts := strings.Split(raw_path, "/")
-					absolute_directory, absolute_directory_errors := newAbsoluteDirectory(parts)
+					absolute_directory, absolute_directory_errors := newAbsoluteDirectory(parts[1:])
 					if absolute_directory_errors != nil {
-						fmt.Println(parts)
-						fmt.Println("hllo3")
 						return nil, absolute_directory_errors
 					}
 					return absolute_directory, nil
