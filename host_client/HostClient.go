@@ -10,6 +10,7 @@ import (
 type HostClient struct {
 	Validate func() []error
 	User func(username string) (*User, []error)
+	Host func(host_name string) (*Host, []error)
 	Group func(group_name string) (*Group, []error)
 	Ramdisk func(disk_name string,block_size uint64) (*Ramdisk, []error)
 	GetEnviornmentVariable func(environment_variable_name string) (*string, []error)
@@ -65,6 +66,9 @@ func NewHostClient() (*HostClient, []error) {
 		},
 		User: func(username string) (*User, []error) {
 			return newUser(username)
+		},
+		Host: func(host_name string) (*Host, []error) {
+			return newHost(host_name)
 		},
 		Group: func(group_name string) (*Group, []error) {
 			return newGroup(group_name)
