@@ -72,6 +72,7 @@ func newHostUser(host Host, user User) HostUser {
 		//todo append ssh pub key to other user if it doesn't exist
 
 		shell_command := "ssh-keygen -b 2048 -t rsa  -f " + ssh_directory.GetPathAsString() + "/" + other.GetFullyQualifiedUsername() + " -C " + other.GetFullyQualifiedUsername() + " -P \"\""
+		
 		return bashCommand.ExecuteUnsafeCommandSimple(shell_command)
 	}
 

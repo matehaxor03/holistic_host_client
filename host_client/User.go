@@ -23,6 +23,7 @@ type User struct {
 	SetPrimaryGroupId func(primary_group_id uint64) []error
 	GetPrimaryGroupId func() (*uint64, []error)
 	GetPrimaryGroup func() (*Group, []error)
+	SetPassword func(password string) []error
 }
 
 func newUser(username string) (*User, []error) {
@@ -194,6 +195,17 @@ func newUser(username string) (*User, []error) {
 		return nil
 	}
 
+	setPassword := func(password string) []error {
+		//todo validate input
+		shell_command := "dscl . -create /Users/" + getUsername() + " Password '" + password + "'"
+		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		if std_errors != nil {
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			return std_errors
+		}
+		return nil
+	}
+
 	getUniqueId := func() (*uint64, []error) {
 		attribute_value, getAttribute_errors := getAttribute("UniqueId")
 		if getAttribute_errors != nil {
@@ -322,6 +334,9 @@ func newUser(username string) (*User, []error) {
 		},
 		SetUniqueId: func(unique_id uint64) []error {
 			return setUniqueId(unique_id)
+		},
+		SetPassword: func(password string) []error {
+			return setPassword(password)
 		},
 		GetUniqueId: func() (*uint64, []error) {
 			return getUniqueId()
