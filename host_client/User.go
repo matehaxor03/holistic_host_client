@@ -132,6 +132,7 @@ func newUser(username string) (*User, []error) {
 	getHomeDirectoryAbsoluteDirectory := func() (*AbsoluteDirectory,[]error) {
 		var errors []error
 		shell_command := "dscl . read /Users/" + getUsername() + " NFSHomeDirectory"
+		fmt.Println(shell_command)
 		std_outs, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		
 		if std_errors != nil {
