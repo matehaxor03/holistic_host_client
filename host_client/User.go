@@ -136,8 +136,10 @@ func newUser(username string) (*User, []error) {
 		std_outs, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		
 		if std_errors != nil {
+			fmt.Println("hi")
 			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
 			errors = append(errors, std_errors...)
+			fmt.Println("hi2")
 		}
 
 		if len(errors) > 0 {
