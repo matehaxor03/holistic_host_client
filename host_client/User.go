@@ -22,6 +22,7 @@ type User struct {
 	GetUniqueId func() (*uint64, []error)
 	SetPrimaryGroupId func(primary_group_id uint64) []error
 	GetPrimaryGroupId func() (*uint64, []error)
+	GetPrimaryGroup func() (*Group, []error)
 }
 
 func newUser(username string) (*User, []error) {
@@ -221,6 +222,41 @@ func newUser(username string) (*User, []error) {
 		return uint64_value, nil
 	}
 
+	getPrimaryGroup := func() (*Group, []error) {
+		primary_group_id, primary_group_id_errors := getPrimaryGroupId()
+		if primary_group_id_errors != nil {
+			return nil, primary_group_id_errors
+		}
+		
+		
+		var errors []error
+		shell_command := "dscl . -search /Groups PrimaryGroupID " +  strconv.FormatUint(*primary_group_id, 10)
+		std_outs, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		
+		if std_errors != nil {
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			errors = append(errors, std_errors...)
+		}
+
+		if len(errors) > 0 {
+			return nil, errors
+		} else {
+			for _, std_out := range std_outs {
+				if strings.Contains(std_out, "PrimaryGroupID: ") {
+					parts := strings.Split(std_out, " ")
+					group, group_errors := newGroup(parts[0])
+					if group_errors != nil {
+						return nil, group_errors
+					}
+					return group, nil
+				}
+			}
+
+			errors = append(errors, fmt.Errorf("unable to determine if group exists or not"))
+			return nil, errors
+		}
+	}
+
 	setPrimaryGroupId := func(primary_group_id uint64) []error {
 		shell_command := "dscl . -create /Users/" + getUsername() + " PrimaryGroupID " + strconv.FormatUint(primary_group_id, 10)
 		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
@@ -295,6 +331,9 @@ func newUser(username string) (*User, []error) {
 		},
 		GetPrimaryGroupId: func() (*uint64, []error) {
 			return getPrimaryGroupId()
+		},
+		GetPrimaryGroup: func() (*Group, []error) {
+			return getPrimaryGroup()
 		},
 		GetHomeDirectoryAbsoluteDirectory: func() (*AbsoluteDirectory, []error) {
 			return getHomeDirectoryAbsoluteDirectory()

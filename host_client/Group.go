@@ -3,6 +3,7 @@ package host_client
 import (
 	validate "github.com/matehaxor03/holistic_validator/validate"
 	common "github.com/matehaxor03/holistic_common/common"
+	json "github.com/matehaxor03/holistic_json/json"	
 	"strings"
 	"fmt"
 	"strconv"
@@ -15,6 +16,7 @@ type Group struct {
 	GetGroupName func() string
 	Exists func() (*bool, []error)
 	SetUniqueId func(unique_id uint64) []error
+	GetPrimaryGroupId func() (*uint64, []error)
 	AddUser func(user User) []error
 }
 
@@ -53,6 +55,41 @@ func newGroup(group_name string) (*Group, []error) {
 		}
 		return nil
 	}
+
+	getAttribute := func(attribute string) (*json.Value,[]error) {
+		var errors []error
+		//todo validate attribute
+
+		shell_command := "dscl . read /Groups/" + getGroupName() + " " + attribute
+		std_outs, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		
+		if std_errors != nil {
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			errors = append(errors, std_errors...)
+		}
+
+		if len(errors) > 0 {
+			for _, err := range errors {
+				if strings.Contains(fmt.Sprintf("%s", err), "RecordNotFound") {
+					return nil, nil
+				}
+			}
+			return nil, errors
+		} else {
+			for _, std_out := range std_outs {
+				if strings.Contains(std_out, attribute + ": ") {
+					raw_path := strings.TrimPrefix(std_out, attribute + ":")
+					raw_path = strings.TrimSpace(raw_path)
+					json_value := json.NewValue(raw_path)
+					return json_value, nil
+				}
+			}
+
+			errors = append(errors, fmt.Errorf("unable to determine if attribute" + attribute + " or not"))
+			return nil, errors
+		}
+	}
+
 
 	exists := func() (*bool, []error) {
 		var errors []error
@@ -117,6 +154,20 @@ func newGroup(group_name string) (*Group, []error) {
 		return nil
 	}
 
+	getPrimaryGroupId := func() (*uint64, []error) {
+		attribute_value, getAttribute_errors := getAttribute("PrimaryGroupID")
+		if getAttribute_errors != nil {
+			return nil, getAttribute_errors
+		}
+		
+		uint64_value, uint64_value_errors := attribute_value.GetUInt64()
+		if uint64_value_errors != nil {
+			return nil, uint64_value_errors
+		}
+
+		return uint64_value, nil
+	}
+
 	addUser := func(user User) []error {
 		shell_command := "dscl . append /Groups/" + getGroupName() + " GroupMembership " + user.GetUsername()
 		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
@@ -145,6 +196,9 @@ func newGroup(group_name string) (*Group, []error) {
 		},
 		SetUniqueId: func(unique_id uint64) []error {
 			return setUniqueId(unique_id)
+		},
+		GetPrimaryGroupId: func() (*uint64, []error) {
+			return getPrimaryGroupId()
 		},
 		AddUser: func(user User) []error {
 			return addUser(user)
