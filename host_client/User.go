@@ -265,6 +265,10 @@ func newUser(username string) (*User, []error) {
 				}
 			}
 
+			for _, std_out := range std_outs {
+				fmt.Println(std_out)
+			}
+
 			errors = append(errors, fmt.Errorf("unable to determine if group exists or not"))
 			return nil, errors
 		}
