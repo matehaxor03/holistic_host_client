@@ -255,16 +255,17 @@ func newUser(username string) (*User, []error) {
 			return nil, errors
 		} else {
 			for _, std_out := range std_outs {
-				if strings.Contains(std_out, "PrimaryGroupID ") {
-					parts := strings.Split(std_out, " ")
-					group, group_errors := newGroup(parts[0])
+				if strings.Contains(std_out, "PrimaryGroupID") {
+					index := strings.Index(std_out, "PrimaryGroupID")
+					group_name := strings.TrimSpace(std_out[:index-1])
+					group, group_errors := newGroup(group_name)
 					if group_errors != nil {
 						return nil, group_errors
 					}
 					return group, nil
 				}
 			}
-			
+
 			errors = append(errors, fmt.Errorf("unable to determine if group exists or not"))
 			return nil, errors
 		}
