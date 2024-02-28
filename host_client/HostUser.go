@@ -47,23 +47,23 @@ func newHostUser(host Host, user User) HostUser {
 			return ssh_directory_errors
 		}
 
+		current_user := getUser()
+		current_user_group, current_user_group_errors := current_user.GetPrimaryGroup()
+		if current_user_group_errors != nil {
+			fmt.Println("current_user_group_errors")
+			return current_user_group_errors
+		}
+
+		if current_user_group == nil {
+			errors = append(errors, fmt.Errorf("current user does not have a group"))
+			return errors
+		}
+
 		if !ssh_directory.Exists() {
 			ssh_directory_create_errors := ssh_directory.Create()
 			if ssh_directory_create_errors != nil {
 				fmt.Println("ssh_directory_create_errors")
 				return ssh_directory_create_errors
-			}
-
-			current_user := getUser()
-			current_user_group, current_user_group_errors := current_user.GetPrimaryGroup()
-			if current_user_group_errors != nil {
-				fmt.Println("current_user_group_errors")
-				return current_user_group_errors
-			}
-
-			if current_user_group == nil {
-				errors = append(errors, fmt.Errorf("current user does not have a group"))
-				return errors
 			}
 
 			set_current_owner_errors := ssh_directory.SetOwnerRecursive(current_user, *current_user_group)
@@ -77,8 +77,42 @@ func newHostUser(host Host, user User) HostUser {
 		//todo append ssh pub key to other user if it doesn't exist
 
 		shell_command := "ssh-keygen -b 2048 -t rsa  -f " + ssh_directory.GetPathAsString() + "/" + other.GetFullyQualifiedUsername() + " -C " + other.GetFullyQualifiedUsername() + " -P \"\""
-		fmt.Println(shell_command)
-		return bashCommand.ExecuteUnsafeCommandSimple(shell_command)
+		bash_command_errors := bashCommand.ExecuteUnsafeCommandSimple(shell_command)
+
+		if bash_command_errors != nil {
+			return bash_command_errors
+		}
+
+		
+
+
+		{
+			absoloute_file_ssh_private_key, absoloute_file_ssh_private_key_errors := newAbsoluteFile(*ssh_directory, other.GetFullyQualifiedUsername())
+			if absoloute_file_ssh_private_key_errors != nil {
+				return absoloute_file_ssh_private_key_errors
+			}
+
+			set_current_owner_absoloute_file_ssh_private_key_errors := absoloute_file_ssh_private_key.SetOwner(current_user, *current_user_group)
+			if set_current_owner_absoloute_file_ssh_private_key_errors != nil {
+				fmt.Println("set_current_owner_absoloute_file_ssh_private_key_errors")
+				return set_current_owner_absoloute_file_ssh_private_key_errors
+			}
+		}
+
+		{
+			absoloute_file_ssh_public_key, absoloute_file_ssh_public_key_errors := newAbsoluteFile(*ssh_directory, other.GetFullyQualifiedUsername() + ".pub")
+			if absoloute_file_ssh_public_key_errors != nil {
+				return absoloute_file_ssh_public_key_errors
+			}
+
+			set_current_owner_absoloute_file_ssh_public_key_errors := absoloute_file_ssh_public_key.SetOwner(current_user, *current_user_group)
+			if set_current_owner_absoloute_file_ssh_public_key_errors != nil {
+				fmt.Println("set_current_owner_absoloute_file_ssh_public_key_errors")
+				return set_current_owner_absoloute_file_ssh_public_key_errors
+			}
+		}
+
+		return nil
 	}
 
 	x := HostUser{
