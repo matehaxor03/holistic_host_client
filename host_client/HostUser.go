@@ -80,15 +80,14 @@ func newHostUser(host Host, user User) HostUser {
 		bash_command_errors := bashCommand.ExecuteUnsafeCommandSimple(shell_command)
 
 		if bash_command_errors != nil {
+			fmt.Println("bash_command_errors")
 			return bash_command_errors
 		}
-
-		
-
 
 		{
 			absoloute_file_ssh_private_key, absoloute_file_ssh_private_key_errors := newAbsoluteFile(*ssh_directory, other.GetFullyQualifiedUsername())
 			if absoloute_file_ssh_private_key_errors != nil {
+				fmt.Println("absoloute_file_ssh_private_key_errors")
 				return absoloute_file_ssh_private_key_errors
 			}
 
@@ -102,6 +101,7 @@ func newHostUser(host Host, user User) HostUser {
 		{
 			absoloute_file_ssh_public_key, absoloute_file_ssh_public_key_errors := newAbsoluteFile(*ssh_directory, other.GetFullyQualifiedUsername() + ".pub")
 			if absoloute_file_ssh_public_key_errors != nil {
+				fmt.Println("absoloute_file_ssh_public_key_errors")
 				return absoloute_file_ssh_public_key_errors
 			}
 
