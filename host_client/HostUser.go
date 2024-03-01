@@ -75,6 +75,36 @@ func newHostUser(host Host, user User) HostUser {
 
 		//todo create other user ssh directory
 		//todo append ssh pub key to other user if it doesn't exist
+	
+
+		//todo delete if already exists
+		{
+			absoloute_file_ssh_private_key, absoloute_file_ssh_private_key_errors := newAbsoluteFile(*ssh_directory, other.GetFullyQualifiedUsername())
+			if absoloute_file_ssh_private_key_errors != nil {
+				fmt.Println("absoloute_file_ssh_private_key_errors")
+				return absoloute_file_ssh_private_key_errors
+			}
+
+			remove_errors := absoloute_file_ssh_private_key.RemoveIfExists()
+			if remove_errors != nil {
+				fmt.Println("remove_errors")
+				return remove_errors
+			}
+		}
+
+		{
+			absoloute_file_ssh_public_key, absoloute_file_ssh_public_key_errors := newAbsoluteFile(*ssh_directory, other.GetFullyQualifiedUsername() + ".pub")
+			if absoloute_file_ssh_public_key_errors != nil {
+				fmt.Println("absoloute_file_ssh_public_key_errors")
+				return absoloute_file_ssh_public_key_errors
+			}
+
+			remove_errors := absoloute_file_ssh_public_key.RemoveIfExists()
+			if remove_errors != nil {
+				fmt.Println("remove_errors")
+				return remove_errors
+			}
+		}
 
 		shell_command := "ssh-keygen -b 2048 -t rsa  -f " + ssh_directory.GetPathAsString() + "/" + other.GetFullyQualifiedUsername() + " -C " + other.GetFullyQualifiedUsername() + " -P \"\""
 		bash_command_errors := bashCommand.ExecuteUnsafeCommandSimple(shell_command)

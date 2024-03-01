@@ -10,6 +10,7 @@ type AbsoluteFile struct {
 	Validate func() []error
 	Create func() []error
 	Exists func() bool
+	RemoveIfExists func() []error
 	GetPath func() []string
 	GetPathAsString func() string
 	GetAbsoluteDirectory func() AbsoluteDirectory
@@ -75,6 +76,16 @@ func newAbsoluteFile(directory AbsoluteDirectory, filename string) (*AbsoluteFil
 		return nil
 	}
 
+	remove := func() []error {
+		var errors []error
+		remove_error := os.Remove(getPathAsString())
+		if remove_error != nil {
+			errors = append(errors, remove_error)
+			return errors
+		}
+		return nil
+	}
+
 	setOwner := func(user User, group Group) []error {
 		shell_command := "chown " + user.GetUsername() + ":" + group.GetGroupName() + " " + getPathAsString()
 		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
@@ -82,6 +93,14 @@ func newAbsoluteFile(directory AbsoluteDirectory, filename string) (*AbsoluteFil
 			return std_error
 		}
 		return nil
+	}
+
+	removeIfExists := func() []error {
+		if !exists() {
+			return nil
+		}
+
+		return remove()
 	}
 
 	x := AbsoluteFile{
@@ -105,6 +124,9 @@ func newAbsoluteFile(directory AbsoluteDirectory, filename string) (*AbsoluteFil
 		},
 		SetOwner: func(host_user User, group Group) []error {
 			return setOwner(host_user, group)
+		},
+		RemoveIfExists: func() []error {
+			return removeIfExists()
 		},
 	}
 	setAbsoluteDirectory(directory)
