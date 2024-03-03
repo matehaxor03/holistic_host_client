@@ -62,18 +62,13 @@ func newAbsoluteFile(directory AbsoluteDirectory, filename string) (*AbsoluteFil
 	}
 
 	create := func() []error {
-		//todo fix
 		var errors []error
-		permissions := int(0700)
-		create_directory_error := os.MkdirAll(getPathAsString(), os.FileMode(permissions))
-		if create_directory_error != nil {
-			errors = append(errors, create_directory_error)
-		}
-		
-		if len(errors) > 0 {
+		create_file, create_file_errors := os.Create(getPathAsString())
+		if create_file_errors != nil {
+			errors = append(errors, create_file_errors)
 			return errors
 		}
-
+		defer create_file.Close()
 		return nil
 	}
 
