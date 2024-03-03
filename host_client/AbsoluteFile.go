@@ -17,6 +17,7 @@ type AbsoluteFile struct {
 	GetFilename func() string
 	SetOwner func(host_user User, group Group) []error
 	Append func(value string) []error
+	Touch func() []error
 }
 
 func newAbsoluteFile(directory AbsoluteDirectory, filename string) (*AbsoluteFile, []error) {
@@ -91,6 +92,15 @@ func newAbsoluteFile(directory AbsoluteDirectory, filename string) (*AbsoluteFil
 		return nil
 	}
 
+	touch := func() []error {
+		shell_command := "touch " + getPathAsString()
+		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		if std_error != nil {
+			return std_error
+		}
+		return nil
+	}
+
 	removeIfExists := func() []error {
 		if !exists() {
 			return nil
@@ -143,6 +153,9 @@ func newAbsoluteFile(directory AbsoluteDirectory, filename string) (*AbsoluteFil
 		},
 		RemoveIfExists: func() []error {
 			return removeIfExists()
+		},
+		Touch: func() []error {
+			return touch()
 		},
 	}
 	setAbsoluteDirectory(directory)
