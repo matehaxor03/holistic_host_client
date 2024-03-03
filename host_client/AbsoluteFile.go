@@ -111,7 +111,7 @@ func newAbsoluteFile(directory AbsoluteDirectory, filename string) (*AbsoluteFil
 
 	append := func(value string) []error {
 		var errors []error
-		file, file_error := os.OpenFile(getPathAsString(), os.O_APPEND, 0644)
+		file, file_error := os.OpenFile(getPathAsString(), os.O_APPEND|os.O_WRONLY, 0644)
 		if file_error != nil {
 			errors = append(errors, file_error)
 			return errors
