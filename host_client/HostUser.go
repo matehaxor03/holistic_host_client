@@ -160,10 +160,10 @@ func newHostUser(host Host, user User) HostUser {
 			return destination_file_authorised_keys_remove_errors
 		}
 
-		destination_file_authorised_keys_create_errors := destination_file_authorised_keys.Create()
-		if destination_file_authorised_keys_create_errors != nil {
-			fmt.Println("destination_file_authorised_keys_create_errors")
-			return destination_file_authorised_keys_create_errors
+		destination_file_authorised_keys_touch_errors := destination_file_authorised_keys.Touch()
+		if destination_file_authorised_keys_touch_errors != nil {
+			fmt.Println("destination_file_authorised_keys_touch_errors")
+			return destination_file_authorised_keys_touch_errors
 		}
 
 		destination_file_authorised_keys_append_errors := destination_file_authorised_keys.Append("blah")
