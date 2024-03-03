@@ -42,7 +42,7 @@ func newAbsoluteFile(directory AbsoluteDirectory, filename string) (*AbsoluteFil
 	}
 
 	getPathAsString := func() string {
-		return 	"/" + getAbsoluteDirectory().GetPathAsString() + "/" + getFilename()
+		return getAbsoluteDirectory().GetPathAsString() + "/" + getFilename()
 	}
 
 	validate := func() []error {
