@@ -16,6 +16,7 @@ type AbsoluteFile struct {
 	GetAbsoluteDirectory func() AbsoluteDirectory
 	GetFilename func() string
 	SetOwner func(host_user User, group Group) []error
+	Append func(value string) []error
 }
 
 func newAbsoluteFile(directory AbsoluteDirectory, filename string) (*AbsoluteFile, []error) {
@@ -103,12 +104,32 @@ func newAbsoluteFile(directory AbsoluteDirectory, filename string) (*AbsoluteFil
 		return remove()
 	}
 
+	append := func(value string) []error {
+		var errors []error
+		file, file_error := os.OpenFile(getPathAsString(), os.O_APPEND, 0644)
+		if file_error != nil {
+			errors = append(errors, file_error)
+			return errors
+		}
+
+		defer file.Close()
+		if _, append_error := file.WriteString(value); append_error != nil {
+			errors = append(errors, append_error)
+			return errors
+		}
+
+		return nil
+	}
+
 	x := AbsoluteFile{
 		Validate: func() []error {
 			return validate()
 		},
 		Create: func() []error {
 			return create()
+		},
+		Append: func(value string) []error {
+			return append(value)
 		},
 		Exists: func() (bool) {
 			return exists()
