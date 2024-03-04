@@ -177,11 +177,12 @@ func newHostUser(host Host, user User) HostUser {
 			errors = append(errors, fmt.Errorf("public key file is empty"))
 			return errors
 		} else if !strings.Contains((*public_key_lines)[0], destination_host_user.GetFullyQualifiedUsername() + destination_host_user.GetFullyQualifiedUsername()) {
+			fmt.Println((*public_key_lines)[0])
 			errors = append(errors, fmt.Errorf("did not find user in public key"))
 			return errors
 		}
 
-		destination_file_authorised_keys_append_errors := destination_file_authorised_keys.Append((*public_key_lines)[0])
+		destination_file_authorised_keys_append_errors := destination_file_authorised_keys.Append((*public_key_lines)[0] + "\n")
 		if destination_file_authorised_keys_append_errors != nil {
 			fmt.Println("destination_file_authorised_keys_append_errors")
 			return destination_file_authorised_keys_append_errors
