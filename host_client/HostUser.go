@@ -176,8 +176,7 @@ func newHostUser(host Host, user User) HostUser {
 		if len(*public_key_lines) == 0 {
 			errors = append(errors, fmt.Errorf("public key file is empty"))
 			return errors
-		} else if !strings.Contains((*public_key_lines)[0], destination_host_user.GetFullyQualifiedUsername() + destination_host_user.GetFullyQualifiedUsername()) {
-			fmt.Println((*public_key_lines)[0])
+		} else if !strings.Contains((*public_key_lines)[0], destination_host_user.GetFullyQualifiedUsername()) {
 			errors = append(errors, fmt.Errorf("did not find user in public key"))
 			return errors
 		}
