@@ -4,6 +4,7 @@ import (
 	validate "github.com/matehaxor03/holistic_validator/validate"
 	common "github.com/matehaxor03/holistic_common/common"
 	"os"
+	"bufio"
 )
 
 type AbsoluteFile struct {
@@ -18,6 +19,7 @@ type AbsoluteFile struct {
 	SetOwner func(host_user User, group Group) []error
 	Append func(value string) []error
 	Touch func() []error
+	ReadAllAsStringArray func() (*[]string, []error)
 }
 
 func newAbsoluteFile(directory AbsoluteDirectory, filename string) (*AbsoluteFile, []error) {
@@ -109,7 +111,7 @@ func newAbsoluteFile(directory AbsoluteDirectory, filename string) (*AbsoluteFil
 		return remove()
 	}
 
-	append := func(value string) []error {
+	appendString := func(value string) []error {
 		var errors []error
 		file, file_error := os.OpenFile(getPathAsString(), os.O_APPEND|os.O_WRONLY, 0644)
 		if file_error != nil {
@@ -126,6 +128,31 @@ func newAbsoluteFile(directory AbsoluteDirectory, filename string) (*AbsoluteFil
 		return nil
 	}
 
+	readAllAsStringArray := func() (*[]string, []error) {
+		var errors []error
+		var lines []string
+		
+		file, file_error := os.Open(getPathAsString())
+		if file_error != nil {
+			errors = append(errors, file_error)
+			return nil, errors
+		}
+		
+		defer file.Close()
+		scanner := bufio.NewScanner(file)
+
+		for scanner.Scan() {
+			lines = append(lines, scanner.Text())
+		}
+
+		if scanner_error := scanner.Err(); scanner_error != nil {
+			errors = append(errors, scanner_error)
+			return nil, errors
+		}
+
+		return &lines, nil
+	}
+
 	x := AbsoluteFile{
 		Validate: func() []error {
 			return validate()
@@ -134,7 +161,7 @@ func newAbsoluteFile(directory AbsoluteDirectory, filename string) (*AbsoluteFil
 			return create()
 		},
 		Append: func(value string) []error {
-			return append(value)
+			return appendString(value)
 		},
 		Exists: func() (bool) {
 			return exists()
@@ -157,14 +184,18 @@ func newAbsoluteFile(directory AbsoluteDirectory, filename string) (*AbsoluteFil
 		Touch: func() []error {
 			return touch()
 		},
+		ReadAllAsStringArray: func() (*[]string, []error) {
+			return readAllAsStringArray()
+		},
 	}
+
 	setAbsoluteDirectory(directory)
 	setFilename(filename)
 
-	errors := validate()
+	validate_errors := validate()
 
-	if errors != nil {
-		return nil, errors
+	if validate_errors != nil {
+		return nil, validate_errors
 	}
 
 	return &x, nil

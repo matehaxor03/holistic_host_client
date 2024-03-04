@@ -3,6 +3,7 @@ package host_client
 import (
 	common "github.com/matehaxor03/holistic_common/common"
 	"fmt"
+	"strings"
 )
 
 type HostUser struct {
@@ -166,7 +167,21 @@ func newHostUser(host Host, user User) HostUser {
 			return destination_file_authorised_keys_touch_errors
 		}
 
-		destination_file_authorised_keys_append_errors := destination_file_authorised_keys.Append("blah")
+		public_key_lines, public_key_lines_errors := source_file_ssh_public_key.ReadAllAsStringArray()
+		if public_key_lines_errors != nil {
+			fmt.Println("public_key_lines_errors")
+			return public_key_lines_errors
+		}
+
+		if len(*public_key_lines) == 0 {
+			errors = append(errors, fmt.Errorf("public key file is empty"))
+			return errors
+		} else if !strings.Contains((*public_key_lines)[0], destination_host_user.GetFullyQualifiedUsername() + destination_host_user.GetFullyQualifiedUsername()) {
+			errors = append(errors, fmt.Errorf("did not find user in public key"))
+			return errors
+		}
+
+		destination_file_authorised_keys_append_errors := destination_file_authorised_keys.Append((*public_key_lines)[0])
 		if destination_file_authorised_keys_append_errors != nil {
 			fmt.Println("destination_file_authorised_keys_append_errors")
 			return destination_file_authorised_keys_append_errors
