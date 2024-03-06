@@ -48,6 +48,7 @@ func newHostUser(host Host, user User) HostUser {
 		}
 
 		current_user := getUser()
+		current_host := getHost()
 		current_user_group, current_user_group_errors := current_user.GetPrimaryGroup()
 		if current_user_group_errors != nil {
 			fmt.Println("current_user_group_errors")
@@ -73,6 +74,37 @@ func newHostUser(host Host, user User) HostUser {
 			}
 		}
 
+		{
+			known_hosts_file, known_hosts_file_error := newAbsoluteFile(*ssh_directory, "known_hosts")
+			if known_hosts_file_error != nil {
+				return nil, known_hosts_file_error
+			}
+
+			known_hosts_file_remove_errors := known_hosts_file.RemoveIfExists()
+			if known_hosts_file_remove_errors != nil {
+				return nil, known_hosts_file_remove_errors
+			}
+			
+			known_hosts_file_touch_errors := known_hosts_file.Touch()
+			if known_hosts_file_touch_errors != nil {
+				return nil, known_hosts_file_touch_errors
+			}
+
+			set_known_hosts_file_current_owner_errors := known_hosts_file.SetOwner(current_user, *current_user_group)
+			if set_known_hosts_file_current_owner_errors != nil {
+				fmt.Println("set_known_hosts_file_current_owner_errors")
+				return nil, set_known_hosts_file_current_owner_errors
+			}
+
+			host_fingerprints, host_fingerprints_errors := current_host.GetSSHFingerprint()
+			if host_fingerprints_errors != nil {
+				return nil, host_fingerprints_errors
+			}
+
+			for _, host_fingerprint := range *host_fingerprints {
+				known_hosts_file.Append(host_fingerprint + "\n")
+			}
+		}
 		return ssh_directory, nil
 	}
 
