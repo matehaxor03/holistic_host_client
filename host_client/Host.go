@@ -33,11 +33,8 @@ func newHost(host_name string) (*Host, []error) {
 
 	getSSHFingerprint := func() (*[]string, []error) {
 		var fingerprints []string
-		shell_command := "ssh-keyscan " + getHostName()
-		std_out, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
-		if std_error != nil {
-			return nil, std_error
-		} 
+		shell_command := "ssh-keyscan " + getHostName() + " 2>/dev/null"
+		std_out, _ := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		
 		for _, s := range std_out {
 			temp := strings.TrimSpace(s)
