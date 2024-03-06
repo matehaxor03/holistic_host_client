@@ -10,7 +10,7 @@ type Host struct {
 	Validate      func() []error
 	GetHostName   func() (string)
 	EnableSSH 	  func() []error
-	GetLocalhostFingerprints func() (*[]string, []error)
+	GetSSHFingerprint func() (*[]string, []error)
 }
 
 func newHost(host_name string) (*Host, []error) {
@@ -31,41 +31,22 @@ func newHost(host_name string) (*Host, []error) {
 		return nil
 	}
 
-	getLocalhostFingerprints := func() (*[]string, []error) {
+	getSSHFingerprint := func() (*[]string, []error) {
 		var fingerprints []string
+		shell_command := "ssh-keyscan " + getHostName()
+		std_out, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		if std_error != nil {
+			return nil, std_error
+		} 
 		
-		{
-			shell_command := "ssh-keyscan 127.0.0.1"
-			std_out, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
-			if std_error != nil {
-				return nil, std_error
-			} 
-			
-			for _, s := range std_out {
-				temp := strings.TrimSpace(s)
-				if strings.HasPrefix(temp, "#") {
-					continue
-				}
-				fingerprints = append(fingerprints, temp)
+		for _, s := range std_out {
+			temp := strings.TrimSpace(s)
+			if strings.HasPrefix(temp, "#") {
+				continue
 			}
+			fingerprints = append(fingerprints, temp)
 		}
-
-		{
-			shell_command := "ssh-keyscan localhost"
-			std_out, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
-			if std_error != nil {
-				return nil, std_error
-			} 
-			
-			for _, s := range std_out {
-				temp := strings.TrimSpace(s)
-				if strings.HasPrefix(temp, "#") {
-					continue
-				}
-				fingerprints = append(fingerprints, temp)
-			}
-		}
-
+		
 		return &fingerprints, nil
 	}
 
@@ -99,8 +80,8 @@ func newHost(host_name string) (*Host, []error) {
 		EnableSSH: func() []error {
 			return enableSSH()
 		},
-		GetLocalhostFingerprints: func() (*[]string, []error) {
-			return getLocalhostFingerprints()
+		GetSSHFingerprint: func() (*[]string, []error) {
+			return getSSHFingerprint()
 		},
 	}, nil
 }
