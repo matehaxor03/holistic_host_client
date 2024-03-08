@@ -30,6 +30,7 @@ func newUser(username string) (*User, []error) {
 	bashCommand := common.NewBashCommand()
 	verify := validate.NewValidator()
 	var this_username string
+	var this_home_directory *AbsoluteDirectory
 
 	setUsername := func(username string) {
 		this_username = username
@@ -130,6 +131,10 @@ func newUser(username string) (*User, []error) {
 	}
 
 	getHomeDirectoryAbsoluteDirectory := func() (*AbsoluteDirectory,[]error) {
+		if this_home_directory != nil {
+			return this_home_directory, nil
+		}
+
 		var errors []error
 		shell_command := "dscl . read /Users/" + getUsername() + " NFSHomeDirectory"
 		fmt.Println(shell_command)
@@ -157,6 +162,7 @@ func newUser(username string) (*User, []error) {
 					if absolute_directory_errors != nil {
 						return nil, absolute_directory_errors
 					}
+					this_home_directory = absolute_directory
 					return absolute_directory, nil
 				}
 			}
@@ -195,6 +201,8 @@ func newUser(username string) (*User, []error) {
 		}
 		return nil
 	}
+
+	//expect -c 'spawn ssh -vv -i ~/.ssh/holisticxyz_b3047_ holisticxyz_b3047_@127.0.0.1 "whoami"; expect "assword:"; send "passowrdhere\r"; interact'
 
 	setPassword := func(password string) []error {
 		//todo validate input
@@ -282,12 +290,15 @@ func newUser(username string) (*User, []error) {
 	}
 
 	createHomeDirectoryAbsoluteDirectory := func(absolute_directory AbsoluteDirectory) []error {
+		//todo clone absolute_directory
+		
 		shell_command := "dscl . -create /Users/" + getUsername() + " NFSHomeDirectory " + absolute_directory.GetPathAsString()
 		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_errors != nil {
 			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
 			return std_errors
 		}
+		this_home_directory = &absolute_directory
 		return nil
 	}
 
