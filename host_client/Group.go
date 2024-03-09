@@ -13,6 +13,7 @@ type Group struct {
 	Validate func() []error
 	Create func() []error
 	Delete func() []error
+	DeleteIfExists func() []error
 	GetGroupName func() string
 	Exists func() (*bool, []error)
 	SetUniqueId func(unique_id uint64) []error
@@ -144,6 +145,19 @@ func newGroup(group_name string) (*Group, []error) {
 		return nil
 	}
 
+	deleteIfExists := func() []error {
+		exists, exists_errors := exists()
+		if exists_errors != nil {
+			return exists_errors
+		}
+
+		if !*exists {
+			return nil
+		}
+
+		return delete()
+	}
+
 	setUniqueId := func(unique_id uint64) []error {
 		shell_command := "dscl . -create /Groups/" + getGroupName() + " gid " + strconv.FormatUint(unique_id, 10)
 		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
@@ -190,6 +204,9 @@ func newGroup(group_name string) (*Group, []error) {
 		},
 		Delete: func() []error {
 			return delete()
+		},
+		DeleteIfExists: func() []error {
+			return deleteIfExists()
 		},
 		GetGroupName: func() string {
 			return getGroupName()

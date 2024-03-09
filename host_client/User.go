@@ -202,13 +202,7 @@ func newUser(username string) (*User, []error) {
 			return nil
 		}
 
-		shell_command := "dscl . -delete /Users/" + getUsername()
-		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
-		if std_errors != nil {
-			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
-			return std_errors
-		}
-		return nil
+		return delete()
 	}
 
 	setUniqueId := func(unique_id uint64) []error {
