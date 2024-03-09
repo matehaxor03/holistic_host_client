@@ -18,6 +18,8 @@ type User struct {
 	CreateHomeDirectoryAbsoluteDirectory func(absolute_directory AbsoluteDirectory) []error
 	GetHomeDirectoryAbsoluteDirectory func() (*AbsoluteDirectory, []error)
 	EnableBinBash func() []error
+	EnableRemoteFullDiskAccess func() []error
+	DisableRemoteFullDiskAccess func() []error
 	GetUsername func() string
 	SetUniqueId func(unique_id uint64) []error
 	GetUniqueId func() (*uint64, []error)
@@ -302,6 +304,26 @@ func newUser(username string) (*User, []error) {
 		return nil
 	}
 
+	enableRemoteFullDiskAccess := func() []error {
+		shell_command := "dseditgroup -o edit -t user -a " + getUsername() + " com.apple.access_ssh"
+		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		if std_errors != nil {
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			return std_errors
+		}
+		return nil
+	}
+
+	disableRemoteFullDiskAccess := func() []error {
+		shell_command := "dseditgroup -o edit -t user -d " + getUsername() + " com.apple.access_ssh"
+		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		if std_errors != nil {
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			return std_errors
+		}
+		return nil
+	}
+
 	createHomeDirectoryAbsoluteDirectory := func(absolute_directory AbsoluteDirectory) []error {
 		//todo clone absolute_directory
 		
@@ -381,6 +403,12 @@ func newUser(username string) (*User, []error) {
 		},
 		GetHomeDirectoryAbsoluteDirectory: func() (*AbsoluteDirectory, []error) {
 			return getHomeDirectoryAbsoluteDirectory()
+		},
+		EnableRemoteFullDiskAccess: func() []error {
+			return enableRemoteFullDiskAccess()
+		},
+		DisableRemoteFullDiskAccess: func() []error {
+			return disableRemoteFullDiskAccess()
 		},
 	}
 	setUsername(username)
