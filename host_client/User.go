@@ -13,6 +13,7 @@ type User struct {
 	Validate func() []error
 	Create func() []error
 	Delete func() []error
+	DeleteIfExists func() []error
 	Exists func() (*bool, []error)
 	CreateHomeDirectoryAbsoluteDirectory func(absolute_directory AbsoluteDirectory) []error
 	GetHomeDirectoryAbsoluteDirectory func() (*AbsoluteDirectory, []error)
@@ -137,7 +138,6 @@ func newUser(username string) (*User, []error) {
 
 		var errors []error
 		shell_command := "dscl . read /Users/" + getUsername() + " NFSHomeDirectory"
-		fmt.Println(shell_command)
 		std_outs, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		
 		if std_errors != nil {
@@ -183,6 +183,25 @@ func newUser(username string) (*User, []error) {
 	}
 
 	delete := func() []error {
+		shell_command := "dscl . -delete /Users/" + getUsername()
+		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		if std_errors != nil {
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			return std_errors
+		}
+		return nil
+	}
+
+	deleteIfExists := func() []error {
+		exists, exists_errors := exists()
+		if exists_errors != nil {
+			return exists_errors
+		}
+
+		if !*exists {
+			return nil
+		}
+
 		shell_command := "dscl . -delete /Users/" + getUsername()
 		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_errors != nil {
@@ -335,6 +354,9 @@ func newUser(username string) (*User, []error) {
 		},
 		Delete: func() []error {
 			return delete()
+		},
+		DeleteIfExists: func() []error {
+			return deleteIfExists()
 		},
 		CreateHomeDirectoryAbsoluteDirectory: func(absolute_directory AbsoluteDirectory) []error {
 			return createHomeDirectoryAbsoluteDirectory(absolute_directory)
