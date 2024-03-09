@@ -318,6 +318,11 @@ func newUser(username string) (*User, []error) {
 		shell_command := "dseditgroup -o edit -t user -d " + getUsername() + " com.apple.access_ssh"
 		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_errors != nil {
+			for _, std_error := range std_errors {
+				if strings.Contains(fmt.Sprintf("%s", std_error), "com.apple.access_ssh Record was not found") {
+					return nil
+				}
+			}
 			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
 			return std_errors
 		}
