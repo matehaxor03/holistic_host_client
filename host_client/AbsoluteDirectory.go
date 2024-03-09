@@ -14,6 +14,7 @@ type AbsoluteDirectory struct {
 	GetPath func() []string
 	GetPathAsString func() string
 	SetOwnerRecursive func(host_user User, group Group) []error
+	Chmod func(permissions int) []error
 }
 
 func newAbsoluteDirectory(path []string) (*AbsoluteDirectory, []error) {
@@ -47,6 +48,20 @@ func newAbsoluteDirectory(path []string) (*AbsoluteDirectory, []error) {
 		if len(errors) > 0 {
 			return errors
 		}
+		return nil
+	}
+
+	chmod := func(permissions int) []error {
+		var errors []error
+		chmod_error := os.Chmod(getPathAsString(), os.FileMode(permissions))
+		if chmod_error != nil {
+			errors = append(errors, chmod_error)
+		}
+		
+		if len(errors) > 0 {
+			return errors
+		}
+
 		return nil
 	}
 
@@ -100,6 +115,9 @@ func newAbsoluteDirectory(path []string) (*AbsoluteDirectory, []error) {
 		},
 		SetOwnerRecursive: func(host_user User, group Group) []error {
 			return setOwnerRecursive(host_user, group)
+		},
+		Chmod: func(permissions int) []error {
+			return chmod(permissions)
 		},
 	}
 	setPath(path)
