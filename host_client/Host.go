@@ -4,6 +4,7 @@ import (
 	validate "github.com/matehaxor03/holistic_validator/validate"
 	common "github.com/matehaxor03/holistic_common/common"
 	"strings"
+	"time"
 )
 
 type Host struct {
@@ -28,6 +29,7 @@ func newHost(host_name string) (*Host, []error) {
 		if std_error != nil {
 			return std_error
 		}
+		time.Sleep(30 * time.Second) 
 		return nil
 	}
 
