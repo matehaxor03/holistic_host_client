@@ -10,6 +10,7 @@ import (
 type AbsoluteDirectory struct {
 	Validate func() []error
 	Create func() []error
+	CreateIfDoesNotExist func() []error
 	Exists func() bool
 	GetPath func() []string
 	GetPathAsString func() string
@@ -88,6 +89,14 @@ func newAbsoluteDirectory(path []string) (*AbsoluteDirectory, []error) {
 		return nil
 	}
 
+	createIfDoesNotExist := func() []error {
+		if exists() {
+			return nil
+		}
+
+		return create()
+	}
+
 	setOwnerRecursive := func(user User, group Group) []error {
 		shell_command := "chown -R " + user.GetUsername() + ":" + group.GetGroupName() + " " + getPathAsString()
 		_, std_error := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
@@ -103,6 +112,9 @@ func newAbsoluteDirectory(path []string) (*AbsoluteDirectory, []error) {
 		},
 		Create: func() []error {
 			return create()
+		},
+		CreateIfDoesNotExist: func() []error {
+			return createIfDoesNotExist()
 		},
 		Exists: func() (bool) {
 			return exists()
