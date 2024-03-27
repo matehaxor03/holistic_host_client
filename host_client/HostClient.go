@@ -19,7 +19,7 @@ type HostClient struct {
 	AbsoluteDirectory func(path []string) (*AbsoluteDirectory, []error)
 	HostUser func(host Host, user User) HostUser
 	AbsoluteFile func(directory AbsoluteDirectory, filename string) (*AbsoluteFile, []error)
-	Whoami func() (*string, []error)
+	Whoami func() (*User, []error)
 }
 
 func NewHostClient() (*HostClient, []error) {
@@ -57,7 +57,7 @@ func NewHostClient() (*HostClient, []error) {
 		return json.NewValue(env_variable_string_value), nil
 	}
 
-	whoami := func() (*string, []error) {
+	whoami := func() (*User, []error) {
 		var errors []error
 		shell_command := "whoami"
 		std_out, std_out_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
@@ -68,9 +68,13 @@ func NewHostClient() (*HostClient, []error) {
 			errors = append(errors, fmt.Errorf("whoami didn't return any stdout"))
 			return nil, errors
 		}
-		result := std_out[0]
+		
+		u, u_errors := newUser(std_out[0])
+		if u_errors != nil {
+			return nil, u_errors
+		}
 
-		return &result, nil
+		return u, nil
 	}
 
 	validate := func() []error {
@@ -108,7 +112,7 @@ func NewHostClient() (*HostClient, []error) {
 		HostUser: func(host Host, user User) HostUser {
 			return newHostUser(host, user)
 		},
-		Whoami: func() (*string, []error) {
+		Whoami: func() (*User, []error) {
 			return whoami()
 		},
 	}
