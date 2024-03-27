@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"os"
 	validate "github.com/matehaxor03/holistic_validator/validate"	
-	json "github.com/matehaxor03/holistic_json/json"	
+	json "github.com/matehaxor03/holistic_json/json"
+	common "github.com/matehaxor03/holistic_common/common"	
 )
 
 type HostClient struct {
@@ -18,10 +19,12 @@ type HostClient struct {
 	AbsoluteDirectory func(path []string) (*AbsoluteDirectory, []error)
 	HostUser func(host Host, user User) HostUser
 	AbsoluteFile func(directory AbsoluteDirectory, filename string) (*AbsoluteFile, []error)
+	Whoami func() (*string, []error)
 }
 
 func NewHostClient() (*HostClient, []error) {
 	verify := validate.NewValidator()
+	bashCommand := common.NewBashCommand()
 
 	get_environment_variable := func(environment_variable string) (*string, []error) {
 		var errors []error
@@ -52,6 +55,22 @@ func NewHostClient() (*HostClient, []error) {
 		}
 
 		return json.NewValue(env_variable_string_value), nil
+	}
+
+	whoami := func() (*string, []error) {
+		var errors []error
+		shell_command := "whoami"
+		std_out, std_out_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+
+		if std_out_errors != nil {
+			return nil, std_out_errors
+		} else if len(std_out) == 0 {
+			errors = append(errors, fmt.Errorf("whoami didn't return any stdout"))
+			return nil, errors
+		}
+		result := std_out[0]
+
+		return &result, nil
 	}
 
 	validate := func() []error {
@@ -88,6 +107,9 @@ func NewHostClient() (*HostClient, []error) {
 		},
 		HostUser: func(host Host, user User) HostUser {
 			return newHostUser(host, user)
+		},
+		Whoami: func() (*string, []error) {
+			return whoami()
 		},
 	}
 	errors := validate()
