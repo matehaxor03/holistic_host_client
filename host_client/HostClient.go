@@ -68,8 +68,13 @@ func NewHostClient() (*HostClient, []error) {
 			errors = append(errors, fmt.Errorf("whoami didn't return any stdout"))
 			return nil, errors
 		}
+
+		username := std_out[0]
+		if username == "root" {
+			username = "holisticxyz_holistic_root_"
+		}
 		
-		u, u_errors := newUser(std_out[0])
+		u, u_errors := newUser(username)
 		if u_errors != nil {
 			return nil, u_errors
 		}
