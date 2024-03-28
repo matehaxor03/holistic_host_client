@@ -17,6 +17,8 @@ type User struct {
 	Exists func() (*bool, []error)
 	CreateHomeDirectoryAbsoluteDirectory func(absolute_directory AbsoluteDirectory) []error
 	GetHomeDirectoryAbsoluteDirectory func() (*AbsoluteDirectory, []error)
+	GetDirectoryIOAbsoluteDirectory func() (*AbsoluteDirectory, []error)
+	GetDirectoryDBAbsoluteDirectory func() (*AbsoluteDirectory, []error)
 	EnableBinBash func() []error
 	EnableRemoteFullDiskAccess func() []error
 	DisableRemoteFullDiskAccess func() []error
@@ -172,6 +174,52 @@ func newUser(username string) (*User, []error) {
 			errors = append(errors, fmt.Errorf("unable to determine if the user exists or not"))
 			return nil, errors
 		}
+	}
+
+	getDirectoryIOAbsoluteDirectory := func() (*AbsoluteDirectory, []error) {
+		var errors []error
+		hd, hd_errors := getHomeDirectoryAbsoluteDirectory()
+		if hd_errors != nil {
+			return nil, hd_errors
+		} else if hd == nil {
+			errors = append(errors, fmt.Errorf("home directory is nil"))
+		}
+		
+		if len(errors) > 0 {
+			return nil, errors
+		}
+		p := hd.GetPath()
+		p = append(p, ".io")
+
+		io_dir, io_dir_errors := newAbsoluteDirectory(p)
+		if io_dir_errors != nil {
+			return nil, io_dir_errors
+		}
+
+		return io_dir, nil
+	}
+
+	getDirectoryDBAbsoluteDirectory := func() (*AbsoluteDirectory, []error) {
+		var errors []error
+		hd, hd_errors := getHomeDirectoryAbsoluteDirectory()
+		if hd_errors != nil {
+			return nil, hd_errors
+		} else if hd == nil {
+			errors = append(errors, fmt.Errorf("home directory is nil"))
+		}
+		
+		if len(errors) > 0 {
+			return nil, errors
+		}
+		p := hd.GetPath()
+		p = append(p, ".db")
+
+		io_dir, io_dir_errors := newAbsoluteDirectory(p)
+		if io_dir_errors != nil {
+			return nil, io_dir_errors
+		}
+
+		return io_dir, nil
 	}
 
 	create := func() []error {
@@ -414,6 +462,12 @@ func newUser(username string) (*User, []error) {
 		},
 		DisableRemoteFullDiskAccess: func() []error {
 			return disableRemoteFullDiskAccess()
+		},
+		GetDirectoryIOAbsoluteDirectory: func() (*AbsoluteDirectory, []error) {
+			return getDirectoryIOAbsoluteDirectory()
+		},
+		GetDirectoryDBAbsoluteDirectory: func() (*AbsoluteDirectory, []error) {
+			return getDirectoryDBAbsoluteDirectory()
 		},
 	}
 	setUsername(username)
