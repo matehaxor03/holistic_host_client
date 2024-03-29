@@ -26,6 +26,7 @@ type User struct {
 	GetHomeDirectoryAbsoluteDirectory func() (*AbsoluteDirectory, []error)
 	GetDirectoryIOAbsoluteDirectory func() (*AbsoluteDirectory, []error)
 	GetDirectoryDBAbsoluteDirectory func() (*AbsoluteDirectory, []error)
+	GetDirectorySSHAbsoluteDirectory func() (*AbsoluteDirectory, []error)
 	EnableBinBash func() []error
 	EnableRemoteFullDiskAccess func() []error
 	DisableRemoteFullDiskAccess func() []error
@@ -37,6 +38,7 @@ type User struct {
 	GetPrimaryGroup func() (*Group, []error)
 	SetPassword func(password string) []error
 	ExecuteUnsafeCommandUsingFiles func(command string, command_data string) ([]string, []error)
+	ExecuteRemoteUnsafeCommandUsingFilesWithoutInputFile func(destination_user HostUser, command string) ([]string, []error)
 }
 
 func newUser(username string) (*User, []error) {
@@ -230,12 +232,35 @@ func newUser(username string) (*User, []error) {
 		p := hd.GetPath()
 		p = append(p, ".db")
 
-		io_dir, io_dir_errors := newAbsoluteDirectory(p)
-		if io_dir_errors != nil {
-			return nil, io_dir_errors
+		db_dir, db_dir_errors := newAbsoluteDirectory(p)
+		if db_dir_errors != nil {
+			return nil, db_dir_errors
 		}
 
-		return io_dir, nil
+		return db_dir, nil
+	}
+
+	getDirectorySSHAbsoluteDirectory := func() (*AbsoluteDirectory, []error) {
+		var errors []error
+		hd, hd_errors := getHomeDirectoryAbsoluteDirectory()
+		if hd_errors != nil {
+			return nil, hd_errors
+		} else if hd == nil {
+			errors = append(errors, fmt.Errorf("home directory is nil"))
+		}
+		
+		if len(errors) > 0 {
+			return nil, errors
+		}
+		p := hd.GetPath()
+		p = append(p, ".ssh")
+
+		ssh_dir, ssh_dir_errors := newAbsoluteDirectory(p)
+		if ssh_dir_errors != nil {
+			return nil, ssh_dir_errors
+		}
+
+		return ssh_dir, nil
 	}
 
 	create := func() []error {
@@ -579,6 +604,87 @@ func newUser(username string) (*User, []error) {
 		},
 		GetDirectoryDBAbsoluteDirectory: func() (*AbsoluteDirectory, []error) {
 			return getDirectoryDBAbsoluteDirectory()
+		},
+		GetDirectorySSHAbsoluteDirectory: func() (*AbsoluteDirectory, []error) {
+			return getDirectorySSHAbsoluteDirectory()
+		},
+		ExecuteRemoteUnsafeCommandUsingFilesWithoutInputFile: func(destination_user HostUser, command string) ([]string, []error) {
+			lock.Lock()
+			defer lock.Unlock()
+			var errors []error
+			var stdout_lines []string
+
+			io_absolute_directory, io_absolute_directory_errors := getDirectoryIOAbsoluteDirectory()
+			if io_absolute_directory_errors != nil {
+				return stdout_lines, io_absolute_directory_errors
+			}
+
+			directory := io_absolute_directory.GetPathAsString()
+
+			uuid, _ := ioutil.ReadFile("/proc/sys/kernel/random/uuid")
+			time_now := time.Now().UnixNano()
+			filename_stdout := directory + "/" + fmt.Sprintf("%v%s-stdout.sql", time_now, string(uuid))
+			filename_stderr := directory + "/" + fmt.Sprintf("%v%s-stderr.sql", time_now, string(uuid))
+			defer cleanup_files("", filename_stdout, filename_stderr)
+
+			ssh_directory, ssh_directory_errors := getDirectorySSHAbsoluteDirectory()
+			if ssh_directory_errors != nil {
+				return stdout_lines, ssh_directory_errors
+			}
+
+			command_escaped, command_escaped_errors := common.EscapeString(command, "'")
+			if command_escaped_errors != nil {
+				errors = append(errors, command_escaped_errors)
+				return stdout_lines, errors
+			}
+
+			full_command := "ssh -i " + ssh_directory.GetPathAsString() + "/" + destination_user.GetFullyQualifiedUsername() + " '" + command_escaped +  "' > " + filename_stdout + " 2> " + filename_stderr + " | touch " + filename_stdout + " && touch " + filename_stderr
+			fmt.Println(full_command)
+			execute_unsafe_command_simple(full_command)
+
+			if _, opening_stdout_error := os.Stat(filename_stdout); opening_stdout_error == nil {
+				file_stdout, file_stdout_errors := os.Open(filename_stdout)
+				if file_stdout_errors != nil {
+					errors = append(errors, file_stdout_errors)
+				} else {
+					defer file_stdout.Close()
+					stdout_scanner := bufio.NewScanner(file_stdout)
+					stdout_scanner_buffer := make([]byte, maxCapacity)
+					stdout_scanner.Buffer(stdout_scanner_buffer, maxCapacity)
+					stdout_scanner.Split(bufio.ScanLines)
+					for stdout_scanner.Scan() {
+						current_text := stdout_scanner.Text()
+						if current_text != "" {
+							stdout_lines = append(stdout_lines, current_text)
+						}
+					}
+				}
+			}
+
+			if _, opening_stderr_error := os.Stat(filename_stderr); opening_stderr_error == nil {
+				file_stderr, file_stderr_errors := os.Open(filename_stderr)
+				if file_stderr_errors != nil {
+					errors = append(errors, file_stderr_errors)
+				} else {
+					defer file_stderr.Close()
+					stderr_scanner := bufio.NewScanner(file_stderr)
+					stderr_scanner_buffer := make([]byte, maxCapacity)
+					stderr_scanner.Buffer(stderr_scanner_buffer, maxCapacity)
+					stderr_scanner.Split(bufio.ScanLines)
+					for stderr_scanner.Scan() {
+						current_text := stderr_scanner.Text()
+						if current_text != "" {
+							errors = append(errors, fmt.Errorf("%s", current_text))
+						}
+					}
+				}
+			}
+
+			if len(errors) > 0 {
+				return stdout_lines, errors
+			}
+
+			return stdout_lines, nil
 		},
 		ExecuteUnsafeCommandUsingFiles: func(command string, command_data string) ([]string, []error) {
 			lock.Lock()
