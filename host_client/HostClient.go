@@ -3,9 +3,9 @@ package host_client
 import (
 	"fmt"
 	"os"
+	"os/user"
 	validate "github.com/matehaxor03/holistic_validator/validate"	
 	json "github.com/matehaxor03/holistic_json/json"
-	common "github.com/matehaxor03/holistic_common/common"	
 )
 
 type HostClient struct {
@@ -24,7 +24,6 @@ type HostClient struct {
 
 func NewHostClient() (*HostClient, []error) {
 	verify := validate.NewValidator()
-	bashCommand := common.NewBashCommand()
 
 	get_environment_variable := func(environment_variable string) (*string, []error) {
 		var errors []error
@@ -59,17 +58,17 @@ func NewHostClient() (*HostClient, []error) {
 
 	whoami := func() (*User, []error) {
 		var errors []error
-		shell_command := "whoami"
-		std_out, std_out_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		current_user, current_user_error := user.Current()
+		if current_user_error != nil {
+			errors = append(errors, current_user_error)
+		}
 
-		if std_out_errors != nil {
-			return nil, std_out_errors
-		} else if len(std_out) == 0 {
-			errors = append(errors, fmt.Errorf("whoami didn't return any stdout"))
+		if len(errors) > 0 {
 			return nil, errors
 		}
 
-		username := std_out[0]
+		username := current_user.Username
+
 		if username == "root" {
 			username = "holisticxyz_holistic_root_"
 		}
