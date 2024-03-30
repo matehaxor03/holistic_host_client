@@ -39,10 +39,10 @@ type User struct {
 	SetPassword func(password string) []error
 	ExecuteUnsafeCommandUsingFiles func(command string, command_data string) ([]string, []error)
 	ExecuteRemoteUnsafeCommandUsingFilesWithoutInputFile func(destination_user HostUser, command string) ([]string, []error)
+	ExecuteUnsafeCommandUsingFilesWithoutInputFile func(command string) ([]string, []error)
 }
 
 func newUser(username string) (*User, []error) {
-	bashCommand := common.NewBashCommand()
 	verify := validate.NewValidator()
 	const maxCapacity = 10*1024*1024  
 	delete_files := list.New()
@@ -53,7 +53,6 @@ func newUser(username string) (*User, []error) {
 	wakeup_lock := &sync.Mutex{}
 	status := "running"
 	var this_username string
-	var this_home_directory *AbsoluteDirectory
 
 	setUsername := func(username string) {
 		this_username = username
@@ -86,112 +85,88 @@ func newUser(username string) (*User, []error) {
 		return nil
 	}
 
-	getAttribute := func(attribute string) (*json.Value,[]error) {
-		var errors []error
-		//todo validate attribute
-
-		shell_command := "dscl . read /Users/" + getUsername() + " " + attribute
-		std_outs, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
-		
-		if std_errors != nil {
-			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
-			errors = append(errors, std_errors...)
-		}
-
-		if len(errors) > 0 {
-			for _, err := range errors {
-				if strings.Contains(fmt.Sprintf("%s", err), "RecordNotFound") {
-					return nil, nil
-				}
-			}
-			return nil, errors
+	get_or_set_status := func(s string) string {
+		status_lock.Lock()
+		defer status_lock.Unlock()
+		if s == "" {
+			return status
 		} else {
-			for _, std_out := range std_outs {
-				if strings.Contains(std_out, attribute + ": ") {
-					raw_path := strings.TrimPrefix(std_out, attribute + ":")
-					raw_path = strings.TrimSpace(raw_path)
-					json_value := json.NewValue(raw_path)
-					return json_value, nil
-				}
-			}
-
-			errors = append(errors, fmt.Errorf("unable to determine if attribute" + attribute + " or not"))
-			return nil, errors
+			status = s
+			return ""
 		}
 	}
 
-	exists := func() (*bool, []error) {
+	execute_unsafe_command_simple := func(command string) ([]error) {
 		var errors []error
-		shell_command := "dscl . read /Users/" + getUsername() + " RecordName"
-		std_outs, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		cmd := exec.Command("bash", "-c", command)
 		
-		result := false
-		if std_errors != nil {
-			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
-			errors = append(errors, std_errors...)
+		start_error := cmd.Start()
+		if start_error != nil {
+			errors = append(errors, start_error)
+		}
+		
+		wait_error := cmd.Wait()
+		if wait_error != nil {
+			errors = append(errors, wait_error)
 		}
 
 		if len(errors) > 0 {
-			for _, err := range errors {
-				if strings.Contains(fmt.Sprintf("%s", err), "RecordNotFound") {
-					result = false
-					return &result, nil
-				}
-			}
+			return errors
+		}
 
-			return nil, errors
+		return nil
+	}
+
+	wakeup_delete_file_processor := func() {
+		wakeup_lock.Lock()
+		defer wakeup_lock.Unlock()
+		if get_or_set_status("") == "paused" {
+			get_or_set_status("try again") 
+			wg.Done()
 		} else {
-			for _, std_out := range std_outs {
-				if strings.Contains(std_out, "RecordName:") {
-					result = true
-					return &result, nil
-				}
-			}
-
-			errors = append(errors, fmt.Errorf("unable to determine if the user exists or not"))
-			return nil, errors
+			get_or_set_status("try again") 
 		}
 	}
 
-	getHomeDirectoryAbsoluteDirectory := func() (*AbsoluteDirectory,[]error) {
-		if this_home_directory != nil {
-			return this_home_directory, nil
-		}
 
-		var errors []error
-		shell_command := "dscl . read /Users/" + getUsername() + " NFSHomeDirectory"
-		std_outs, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
-		
-		if std_errors != nil {
-			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
-			errors = append(errors, std_errors...)
-		}
-
-		if len(errors) > 0 {
-			for _, err := range errors {
-				if strings.Contains(fmt.Sprintf("%s", err), "RecordNotFound") {
-					return nil, nil
-				}
+	get_or_set_files := func(absolute_path_filename *string, mode string) (*string, error) {
+		file_lock.Lock()
+		defer file_lock.Unlock()
+		if mode == "push" {
+			if absolute_path_filename == nil {
+				return nil, fmt.Errorf("absolute_path_filename is nil")
 			}
-			return nil, errors
+			delete_files.PushFront(absolute_path_filename)
+			wakeup_delete_file_processor()
+			return nil, nil
+		} else if mode == "pull" {
+			message := delete_files.Front()
+			if message == nil {
+				return nil, nil
+			}
+			delete_files.Remove(message)
+			return message.Value.(*string), nil
 		} else {
-			for _, std_out := range std_outs {
-				if strings.Contains(std_out, "NFSHomeDirectory: ") {
-					raw_path := strings.TrimPrefix(std_out, "NFSHomeDirectory:")
-					raw_path = strings.TrimSpace(raw_path)
-					parts := strings.Split(raw_path, "/")
-					absolute_directory, absolute_directory_errors := newAbsoluteDirectory(parts[1:])
-					if absolute_directory_errors != nil {
-						return nil, absolute_directory_errors
-					}
-					this_home_directory = absolute_directory
-					return absolute_directory, nil
-				}
-			}
-
-			errors = append(errors, fmt.Errorf("unable to determine if the user exists or not"))
-			return nil, errors
+			return nil, fmt.Errorf("mode is not supported %s", mode)
 		}
+	}
+
+	cleanup_files := func(input_file string, stdout_file string, std_err_file string) {
+		if input_file != "" {
+			get_or_set_files(&input_file, "push")
+		}
+		get_or_set_files(&stdout_file, "push")
+		get_or_set_files(&std_err_file, "push")
+	}
+
+	getHomeDirectoryAbsoluteDirectory := func() (*AbsoluteDirectory, []error) {
+		d := "/Volumes/holisticxyz_ramdisk_/Users/" + getUsername()
+		parts := strings.Split(d, "/")
+		absolute_directory, absolute_directory_errors := newAbsoluteDirectory(parts[1:])
+		if absolute_directory_errors != nil {
+			return nil, absolute_directory_errors
+		}
+		return absolute_directory, nil
 	}
 
 	getDirectoryIOAbsoluteDirectory := func() (*AbsoluteDirectory, []error) {
@@ -263,9 +238,211 @@ func newUser(username string) (*User, []error) {
 		return ssh_dir, nil
 	}
 
+	executeUnsafeCommandUsingFiles := func(command string, command_data string) ([]string, []error) {
+		lock.Lock()
+		defer lock.Unlock()
+		var errors []error
+		var stdout_lines []string
+
+		io_absolute_directory, io_absolute_directory_errors := getDirectoryIOAbsoluteDirectory()
+		if io_absolute_directory_errors != nil {
+			return stdout_lines, io_absolute_directory_errors
+		}
+
+		directory := io_absolute_directory.GetPathAsString()
+		uuid, _ := ioutil.ReadFile("/proc/sys/kernel/random/uuid")
+		time_now := time.Now().UnixNano()
+		filename := directory + "/" + fmt.Sprintf("%v%s.sql", time_now, string(uuid))
+		filename_stdout := directory + "/" + fmt.Sprintf("%v%s-stdout.sql", time_now, string(uuid))
+		filename_stderr := directory + "/" + fmt.Sprintf("%v%s-stderr.sql", time_now, string(uuid))
+		defer cleanup_files(filename, filename_stdout, filename_stderr)
+
+		ioutil.WriteFile(filename, []byte(command_data), 0600)
+		full_command := command + " < " + filename +  " > " + filename_stdout + " 2> " + filename_stderr + " | touch " + filename_stdout + " && touch " + filename_stderr
+		execute_unsafe_command_simple(full_command)
+
+		if _, opening_stdout_error := os.Stat(filename_stdout); opening_stdout_error == nil {
+			file_stdout, file_stdout_errors := os.Open(filename_stdout)
+			if file_stdout_errors != nil {
+				errors = append(errors, file_stdout_errors)
+			} else {
+				defer file_stdout.Close()
+				stdout_scanner := bufio.NewScanner(file_stdout)
+				stdout_scanner_buffer := make([]byte, maxCapacity)
+				stdout_scanner.Buffer(stdout_scanner_buffer, maxCapacity)
+				stdout_scanner.Split(bufio.ScanLines)
+				for stdout_scanner.Scan() {
+					current_text := stdout_scanner.Text()
+					if current_text != "" {
+						stdout_lines = append(stdout_lines, current_text)
+					}
+				}
+			}
+		}
+
+		if _, opening_stderr_error := os.Stat(filename_stderr); opening_stderr_error == nil {
+			file_stderr, file_stderr_errors := os.Open(filename_stderr)
+			if file_stderr_errors != nil {
+				errors = append(errors, file_stderr_errors)
+			} else {
+				defer file_stderr.Close()
+				stderr_scanner := bufio.NewScanner(file_stderr)
+				stderr_scanner_buffer := make([]byte, maxCapacity)
+				stderr_scanner.Buffer(stderr_scanner_buffer, maxCapacity)
+				stderr_scanner.Split(bufio.ScanLines)
+				for stderr_scanner.Scan() {
+					current_text := stderr_scanner.Text()
+					if current_text != "" {
+						errors = append(errors, fmt.Errorf("%s", current_text))
+					}
+				}
+			}
+		}
+
+		if len(errors) > 0 {
+			return stdout_lines, errors
+		}
+
+		return stdout_lines, nil
+	}
+
+	executeUnsafeCommandUsingFilesWithoutInputFile := func(command string) ([]string, []error) {
+		lock.Lock()
+		defer lock.Unlock()
+		var stdout_lines []string
+		var errors []error
+
+		io_absolute_directory, io_absolute_directory_errors := getDirectoryIOAbsoluteDirectory()
+		if io_absolute_directory_errors != nil {
+			return stdout_lines, io_absolute_directory_errors
+		}
+
+		directory := io_absolute_directory.GetPathAsString()
+
+		uuid, _ := ioutil.ReadFile("/proc/sys/kernel/random/uuid")
+		time_now := time.Now().UnixNano()
+		filename_stdout := directory + "/" + fmt.Sprintf("%v%s-stdout.sql", time_now, string(uuid))
+		filename_stderr := directory + "/" + fmt.Sprintf("%v%s-stderr.sql", time_now, string(uuid))
+		defer cleanup_files("", filename_stdout, filename_stderr)
+
+		full_command := command +  " > " + filename_stdout + " 2> " + filename_stderr + " | touch " + filename_stdout + " && touch " + filename_stderr
+		execute_unsafe_command_simple(full_command)
+
+		if _, opening_stdout_error := os.Stat(filename_stdout); opening_stdout_error == nil {
+			file_stdout, file_stdout_errors := os.Open(filename_stdout)
+			if file_stdout_errors != nil {
+				errors = append(errors, file_stdout_errors)
+			} else {
+				defer file_stdout.Close()
+				stdout_scanner := bufio.NewScanner(file_stdout)
+				stdout_scanner_buffer := make([]byte, maxCapacity)
+				stdout_scanner.Buffer(stdout_scanner_buffer, maxCapacity)
+				stdout_scanner.Split(bufio.ScanLines)
+				for stdout_scanner.Scan() {
+					current_text := stdout_scanner.Text()
+					if current_text != "" {
+						stdout_lines = append(stdout_lines, current_text)
+					}
+				}
+			}
+		}
+
+		if _, opening_stderr_error := os.Stat(filename_stderr); opening_stderr_error == nil {
+			file_stderr, file_stderr_errors := os.Open(filename_stderr)
+			if file_stderr_errors != nil {
+				errors = append(errors, file_stderr_errors)
+			} else {
+				defer file_stderr.Close()
+				stderr_scanner := bufio.NewScanner(file_stderr)
+				stderr_scanner_buffer := make([]byte, maxCapacity)
+				stderr_scanner.Buffer(stderr_scanner_buffer, maxCapacity)
+				stderr_scanner.Split(bufio.ScanLines)
+				for stderr_scanner.Scan() {
+					current_text := stderr_scanner.Text()
+					if current_text != "" {
+						errors = append(errors, fmt.Errorf("%s", current_text))
+					}
+				}
+			}
+		}
+
+		if len(errors) > 0 {
+			return stdout_lines, errors
+		}
+
+		return stdout_lines, nil
+	}
+
+	getAttribute := func(attribute string) (*json.Value,[]error) {
+		var errors []error
+		//todo validate attribute
+
+		shell_command := "dscl . read /Users/" + getUsername() + " " + attribute
+		std_outs, std_errors := executeUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		
+		if std_errors != nil {
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			errors = append(errors, std_errors...)
+		}
+
+		if len(errors) > 0 {
+			for _, err := range errors {
+				if strings.Contains(fmt.Sprintf("%s", err), "RecordNotFound") {
+					return nil, nil
+				}
+			}
+			return nil, errors
+		} else {
+			for _, std_out := range std_outs {
+				if strings.Contains(std_out, attribute + ": ") {
+					raw_path := strings.TrimPrefix(std_out, attribute + ":")
+					raw_path = strings.TrimSpace(raw_path)
+					json_value := json.NewValue(raw_path)
+					return json_value, nil
+				}
+			}
+
+			errors = append(errors, fmt.Errorf("unable to determine if attribute" + attribute + " or not"))
+			return nil, errors
+		}
+	}
+
+	exists := func() (*bool, []error) {
+		var errors []error
+		shell_command := "dscl . read /Users/" + getUsername() + " RecordName"
+		std_outs, std_errors := executeUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		
+		result := false
+		if std_errors != nil {
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			errors = append(errors, std_errors...)
+		}
+
+		if len(errors) > 0 {
+			for _, err := range errors {
+				if strings.Contains(fmt.Sprintf("%s", err), "RecordNotFound") {
+					result = false
+					return &result, nil
+				}
+			}
+
+			return nil, errors
+		} else {
+			for _, std_out := range std_outs {
+				if strings.Contains(std_out, "RecordName:") {
+					result = true
+					return &result, nil
+				}
+			}
+
+			errors = append(errors, fmt.Errorf("unable to determine if the user exists or not"))
+			return nil, errors
+		}
+	}
+
 	create := func() []error {
 		shell_command := "dscl . -create /Users/" + getUsername()
-		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		_, std_errors := executeUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_errors != nil {
 			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
 			return std_errors
@@ -275,7 +452,7 @@ func newUser(username string) (*User, []error) {
 
 	delete := func() []error {
 		shell_command := "dscl . -delete /Users/" + getUsername()
-		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		_, std_errors := executeUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_errors != nil {
 			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
 			return std_errors
@@ -298,7 +475,7 @@ func newUser(username string) (*User, []error) {
 
 	setUniqueId := func(unique_id uint64) []error {
 		shell_command := "dscl . -create /Users/" + getUsername() + " UniqueID " + strconv.FormatUint(unique_id, 10)
-		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		_, std_errors := executeUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_errors != nil {
 			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
 			return std_errors
@@ -311,7 +488,7 @@ func newUser(username string) (*User, []error) {
 	setPassword := func(password string) []error {
 		//todo validate input
 		shell_command := "dscl . -create /Users/" + getUsername() + " Password '" + password + "'"
-		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		_, std_errors := executeUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_errors != nil {
 			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
 			return std_errors
@@ -356,7 +533,7 @@ func newUser(username string) (*User, []error) {
 		
 		var errors []error
 		shell_command := "dscl . -search /Groups PrimaryGroupID " +  strconv.FormatUint(*primary_group_id, 10)
-		std_outs, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		std_outs, std_errors := executeUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		
 		if std_errors != nil {
 			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
@@ -385,7 +562,7 @@ func newUser(username string) (*User, []error) {
 
 	setPrimaryGroupId := func(primary_group_id uint64) []error {
 		shell_command := "dscl . -create /Users/" + getUsername() + " PrimaryGroupID " + strconv.FormatUint(primary_group_id, 10)
-		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		_, std_errors := executeUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_errors != nil {
 			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
 			return std_errors
@@ -395,7 +572,7 @@ func newUser(username string) (*User, []error) {
 
 	enableRemoteFullDiskAccess := func() []error {
 		shell_command := "dseditgroup -o edit -t user -a " + getUsername() + " com.apple.access_ssh"
-		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		_, std_errors := executeUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_errors != nil {
 			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
 			return std_errors
@@ -405,7 +582,7 @@ func newUser(username string) (*User, []error) {
 
 	disableRemoteFullDiskAccess := func() []error {
 		shell_command := "dseditgroup -o edit -t user -d " + getUsername() + " com.apple.access_ssh"
-		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		_, std_errors := executeUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_errors != nil {
 			error_string := fmt.Sprintf("%s", std_errors)
 			if strings.Contains(error_string, "Record was not found") {
@@ -422,12 +599,11 @@ func newUser(username string) (*User, []error) {
 		//todo clone absolute_directory
 		
 		shell_command := "dscl . -create /Users/" + getUsername() + " NFSHomeDirectory " + absolute_directory.GetPathAsString()
-		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		_, std_errors := executeUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_errors != nil {
 			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
 			return std_errors
 		}
-		this_home_directory = &absolute_directory
 		return nil
 	}
 
@@ -444,89 +620,13 @@ func newUser(username string) (*User, []error) {
 		}
 
 		shell_command := "dscl . -create /Users/" + getUsername() + " UserShell /bin/bash"
-		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		_, std_errors := executeUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_errors != nil {
 			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
 			return std_errors
 		}
 		return nil
 	}
-
-	get_or_set_status := func(s string) string {
-		status_lock.Lock()
-		defer status_lock.Unlock()
-		if s == "" {
-			return status
-		} else {
-			status = s
-			return ""
-		}
-	}
-
-	execute_unsafe_command_simple := func(command string) ([]error) {
-		var errors []error
-		cmd := exec.Command("bash", "-c", command)
-		
-		start_error := cmd.Start()
-		if start_error != nil {
-			errors = append(errors, start_error)
-		}
-		
-		wait_error := cmd.Wait()
-		if wait_error != nil {
-			errors = append(errors, wait_error)
-		}
-
-		if len(errors) > 0 {
-			return errors
-		}
-
-		return nil
-	}
-
-	wakeup_delete_file_processor := func() {
-		wakeup_lock.Lock()
-		defer wakeup_lock.Unlock()
-		if get_or_set_status("") == "paused" {
-			get_or_set_status("try again") 
-			wg.Done()
-		} else {
-			get_or_set_status("try again") 
-		}
-	}
-
-
-	get_or_set_files := func(absolute_path_filename *string, mode string) (*string, error) {
-		file_lock.Lock()
-		defer file_lock.Unlock()
-		if mode == "push" {
-			if absolute_path_filename == nil {
-				return nil, fmt.Errorf("absolute_path_filename is nil")
-			}
-			delete_files.PushFront(absolute_path_filename)
-			wakeup_delete_file_processor()
-			return nil, nil
-		} else if mode == "pull" {
-			message := delete_files.Front()
-			if message == nil {
-				return nil, nil
-			}
-			delete_files.Remove(message)
-			return message.Value.(*string), nil
-		} else {
-			return nil, fmt.Errorf("mode is not supported %s", mode)
-		}
-	}
-
-
-	cleanup_files := func(input_file string, stdout_file string, std_err_file string) {
-		if input_file != "" {
-			get_or_set_files(&input_file, "push")
-		}
-		get_or_set_files(&stdout_file, "push")
-		get_or_set_files(&std_err_file, "push")
-	}
-
 
 	process_clean_up := func() {
 		for {
@@ -687,71 +787,10 @@ func newUser(username string) (*User, []error) {
 			return stdout_lines, nil
 		},
 		ExecuteUnsafeCommandUsingFiles: func(command string, command_data string) ([]string, []error) {
-			lock.Lock()
-			defer lock.Unlock()
-			var errors []error
-			var stdout_lines []string
-
-			io_absolute_directory, io_absolute_directory_errors := getDirectoryIOAbsoluteDirectory()
-			if io_absolute_directory_errors != nil {
-				return stdout_lines, io_absolute_directory_errors
-			}
-
-			directory := io_absolute_directory.GetPathAsString()
-			uuid, _ := ioutil.ReadFile("/proc/sys/kernel/random/uuid")
-			time_now := time.Now().UnixNano()
-			filename := directory + "/" + fmt.Sprintf("%v%s.sql", time_now, string(uuid))
-			filename_stdout := directory + "/" + fmt.Sprintf("%v%s-stdout.sql", time_now, string(uuid))
-			filename_stderr := directory + "/" + fmt.Sprintf("%v%s-stderr.sql", time_now, string(uuid))
-			defer cleanup_files(filename, filename_stdout, filename_stderr)
-
-			ioutil.WriteFile(filename, []byte(command_data), 0600)
-			full_command := command + " < " + filename +  " > " + filename_stdout + " 2> " + filename_stderr + " | touch " + filename_stdout + " && touch " + filename_stderr
-			execute_unsafe_command_simple(full_command)
-
-			if _, opening_stdout_error := os.Stat(filename_stdout); opening_stdout_error == nil {
-				file_stdout, file_stdout_errors := os.Open(filename_stdout)
-				if file_stdout_errors != nil {
-					errors = append(errors, file_stdout_errors)
-				} else {
-					defer file_stdout.Close()
-					stdout_scanner := bufio.NewScanner(file_stdout)
-					stdout_scanner_buffer := make([]byte, maxCapacity)
-					stdout_scanner.Buffer(stdout_scanner_buffer, maxCapacity)
-					stdout_scanner.Split(bufio.ScanLines)
-					for stdout_scanner.Scan() {
-						current_text := stdout_scanner.Text()
-						if current_text != "" {
-							stdout_lines = append(stdout_lines, current_text)
-						}
-					}
-				}
-			}
-
-			if _, opening_stderr_error := os.Stat(filename_stderr); opening_stderr_error == nil {
-				file_stderr, file_stderr_errors := os.Open(filename_stderr)
-				if file_stderr_errors != nil {
-					errors = append(errors, file_stderr_errors)
-				} else {
-					defer file_stderr.Close()
-					stderr_scanner := bufio.NewScanner(file_stderr)
-					stderr_scanner_buffer := make([]byte, maxCapacity)
-					stderr_scanner.Buffer(stderr_scanner_buffer, maxCapacity)
-					stderr_scanner.Split(bufio.ScanLines)
-					for stderr_scanner.Scan() {
-						current_text := stderr_scanner.Text()
-						if current_text != "" {
-							errors = append(errors, fmt.Errorf("%s", current_text))
-						}
-					}
-				}
-			}
-
-			if len(errors) > 0 {
-				return stdout_lines, errors
-			}
-
-			return stdout_lines, nil
+			return executeUnsafeCommandUsingFiles(command, command_data)
+		},
+		ExecuteUnsafeCommandUsingFilesWithoutInputFile: func(command string)  ([]string, []error) {
+			return executeUnsafeCommandUsingFilesWithoutInputFile(command)
 		},
 	}
 	setUsername(username)
