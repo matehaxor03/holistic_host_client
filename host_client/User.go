@@ -638,7 +638,7 @@ func newUser(username string) (*User, []error) {
 				return stdout_lines, errors
 			}
 
-			full_command := "ssh -i " + ssh_directory.GetPathAsString() + "/" + destination_user.GetFullyQualifiedUsername() + " '" + command_escaped +  "' > " + filename_stdout + " 2> " + filename_stderr + " | touch " + filename_stdout + " && touch " + filename_stderr
+			full_command := "ssh -i " + ssh_directory.GetPathAsString() + "/" + destination_user.GetFullyQualifiedUsername() + " " + destination_user.GetFullyQualifiedUsername() + " '" + command_escaped +  "' > " + filename_stdout + " 2> " + filename_stderr + " | touch " + filename_stdout + " && touch " + filename_stderr
 			fmt.Println(full_command)
 			execute_unsafe_command_simple(full_command)
 
