@@ -10,6 +10,7 @@ type RemoteAbsoluteDirectory struct {
 	Validate func() []error
 	Create func() []error
 	CreateIfDoesNotExist func() []error
+	DeleteIfExists func() []error
 	Exists func() (*bool, []error)
 	GetPath func() []string
 	GetPathAsString func() string
@@ -111,6 +112,19 @@ func newRemoteAbsoluteDirectory(source_user User, host_user HostUser, path []str
 		return nil
 	}
 
+	delete := func() []error {
+		temp_source_user := getSourceUser()
+		temp_host_user := getHostUser()
+		shell_command := "ssh -i ~/.ssh/" + temp_host_user.GetFullyQualifiedUsername() + " " + host_user.GetFullyQualifiedUsername() + "'rm -fr " + getPathAsString() + "'"
+		_, std_errors := temp_source_user.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
+		
+		if std_errors != nil {
+			return std_errors
+		}
+
+		return nil
+	}
+
 	createIfDoesNotExist := func() []error {
 		exists, exists_errors := exists()
 		if exists_errors != nil {
@@ -124,6 +138,19 @@ func newRemoteAbsoluteDirectory(source_user User, host_user HostUser, path []str
 		return create()
 	}
 
+	deleteIfExists := func() []error {
+		exists, exists_errors := exists()
+		if exists_errors != nil {
+			return exists_errors
+		}
+
+		if !*exists {
+			return nil
+		}
+
+		return delete()
+	}
+
 	x := RemoteAbsoluteDirectory{
 		Validate: func() []error {
 			return validate()
@@ -133,6 +160,9 @@ func newRemoteAbsoluteDirectory(source_user User, host_user HostUser, path []str
 		},
 		CreateIfDoesNotExist: func() []error {
 			return createIfDoesNotExist()
+		},
+		DeleteIfExists: func() []error {
+			return deleteIfExists()
 		},
 		Exists: func() (*bool, []error) {
 			return exists()
