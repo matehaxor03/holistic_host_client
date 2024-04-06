@@ -40,6 +40,7 @@ type User struct {
 	ExecuteUnsafeCommandUsingFiles func(command string, command_data string) ([]string, []error)
 	ExecuteRemoteUnsafeCommandUsingFilesWithoutInputFile func(destination_user HostUser, command string) ([]string, []error)
 	ExecuteUnsafeCommandUsingFilesWithoutInputFile func(command string) ([]string, []error)
+	RemoteAbsoluteDirectory func(destination HostUser, path []string) (*RemoteAbsoluteDirectory, []error)
 }
 
 func newUser(username string) (*User, []error) {
@@ -52,6 +53,7 @@ func newUser(username string) (*User, []error) {
 	var wg sync.WaitGroup
 	wakeup_lock := &sync.Mutex{}
 	status := "running"
+	var this_user User
 	var this_username string
 
 	setUsername := func(username string) {
@@ -60,6 +62,14 @@ func newUser(username string) (*User, []error) {
 
 	getUsername := func() string {
 		return this_username
+	}
+
+	setUser := func(u User) {
+		this_user = u
+	}
+
+	getUser := func() User {
+		return this_user
 	}
 
 	validate := func() []error {
@@ -708,6 +718,9 @@ func newUser(username string) (*User, []error) {
 		GetDirectorySSHAbsoluteDirectory: func() (*AbsoluteDirectory, []error) {
 			return getDirectorySSHAbsoluteDirectory()
 		},
+		RemoteAbsoluteDirectory: func(destination HostUser, path []string) (*RemoteAbsoluteDirectory, []error) {
+			return newRemoteAbsoluteDirectory(getUser(), destination, path)
+		},
 		ExecuteRemoteUnsafeCommandUsingFilesWithoutInputFile: func(destination_user HostUser, command string) ([]string, []error) {
 			lock.Lock()
 			defer lock.Unlock()
@@ -794,6 +807,7 @@ func newUser(username string) (*User, []error) {
 		},
 	}
 	setUsername(username)
+	setUser(x)
 
 	errors := validate()
 
