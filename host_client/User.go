@@ -1,51 +1,52 @@
 package host_client
 
 import (
-	validate "github.com/matehaxor03/holistic_validator/validate"
-	common "github.com/matehaxor03/holistic_common/common"
-	json "github.com/matehaxor03/holistic_json/json"	
-	"strings"
-	"fmt"
-	"strconv"
-	"time"
-	"sync"
-	"io/ioutil"
-	"os"
 	"bufio"
 	"container/list"
+	"fmt"
+	"io/ioutil"
+	"os"
 	"os/exec"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
+	common "github.com/matehaxor03/holistic_common/common"
+	json "github.com/matehaxor03/holistic_json/json"
+	validate "github.com/matehaxor03/holistic_validator/validate"
 )
 
 type User struct {
-	Validate func() []error
-	Create func() []error
-	Delete func() []error
-	DeleteIfExists func() []error
-	Exists func() (*bool, []error)
-	CreateHomeDirectoryAbsoluteDirectory func(absolute_directory AbsoluteDirectory) []error
-	GetHomeDirectoryAbsoluteDirectory func() (*AbsoluteDirectory, []error)
-	GetDirectoryIOAbsoluteDirectory func() (*AbsoluteDirectory, []error)
-	GetDirectoryDBAbsoluteDirectory func() (*AbsoluteDirectory, []error)
-	GetDirectorySSHAbsoluteDirectory func() (*AbsoluteDirectory, []error)
-	EnableBinBash func() []error
-	EnableRemoteFullDiskAccess func() []error
-	DisableRemoteFullDiskAccess func() []error
-	GetUsername func() string
-	SetUniqueId func(unique_id uint64) []error
-	GetUniqueId func() (*uint64, []error)
-	SetPrimaryGroupId func(primary_group_id uint64) []error
-	GetPrimaryGroupId func() (*uint64, []error)
-	GetPrimaryGroup func() (*Group, []error)
-	SetPassword func(password string) []error
-	ExecuteUnsafeCommandUsingFiles func(command string, command_data string) ([]string, []error)
+	Validate                                             func() []error
+	Create                                               func() []error
+	Delete                                               func() []error
+	DeleteIfExists                                       func() []error
+	Exists                                               func() (*bool, []error)
+	CreateHomeDirectoryAbsoluteDirectory                 func(absolute_directory AbsoluteDirectory) []error
+	GetHomeDirectoryAbsoluteDirectory                    func() (*AbsoluteDirectory, []error)
+	GetDirectoryIOAbsoluteDirectory                      func() (*AbsoluteDirectory, []error)
+	GetDirectoryDBAbsoluteDirectory                      func() (*AbsoluteDirectory, []error)
+	GetDirectorySSHAbsoluteDirectory                     func() (*AbsoluteDirectory, []error)
+	EnableBinBash                                        func() []error
+	EnableRemoteFullDiskAccess                           func() []error
+	DisableRemoteFullDiskAccess                          func() []error
+	GetUsername                                          func() string
+	SetUniqueId                                          func(unique_id uint64) []error
+	GetUniqueId                                          func() (*uint64, []error)
+	SetPrimaryGroupId                                    func(primary_group_id uint64) []error
+	GetPrimaryGroupId                                    func() (*uint64, []error)
+	GetPrimaryGroup                                      func() (*Group, []error)
+	SetPassword                                          func(password string) []error
+	ExecuteUnsafeCommandUsingFiles                       func(command string, command_data string) ([]string, []error)
 	ExecuteRemoteUnsafeCommandUsingFilesWithoutInputFile func(destination_user HostUser, command string) ([]string, []error)
-	ExecuteUnsafeCommandUsingFilesWithoutInputFile func(command string) ([]string, []error)
-	RemoteAbsoluteDirectory func(destination HostUser, path []string) (*RemoteAbsoluteDirectory, []error)
+	ExecuteUnsafeCommandUsingFilesWithoutInputFile       func(command string) ([]string, []error)
+	RemoteAbsoluteDirectory                              func(destination HostUser, path []string) (*RemoteAbsoluteDirectory, []error)
 }
 
 func newUser(username string) (*User, []error) {
 	verify := validate.NewValidator()
-	const maxCapacity = 10*1024*1024  
+	const maxCapacity = 10 * 1024 * 1024
 	delete_files := list.New()
 	lock := &sync.RWMutex{}
 	status_lock := &sync.RWMutex{}
@@ -106,15 +107,15 @@ func newUser(username string) (*User, []error) {
 		}
 	}
 
-	execute_unsafe_command_simple := func(command string) ([]error) {
+	execute_unsafe_command_simple := func(command string) []error {
 		var errors []error
 		cmd := exec.Command("bash", "-c", command)
-		
+
 		start_error := cmd.Start()
 		if start_error != nil {
 			errors = append(errors, start_error)
 		}
-		
+
 		wait_error := cmd.Wait()
 		if wait_error != nil {
 			errors = append(errors, wait_error)
@@ -131,13 +132,12 @@ func newUser(username string) (*User, []error) {
 		wakeup_lock.Lock()
 		defer wakeup_lock.Unlock()
 		if get_or_set_status("") == "paused" {
-			get_or_set_status("try again") 
+			get_or_set_status("try again")
 			wg.Done()
 		} else {
-			get_or_set_status("try again") 
+			get_or_set_status("try again")
 		}
 	}
-
 
 	get_or_set_files := func(absolute_path_filename *string, mode string) (*string, error) {
 		file_lock.Lock()
@@ -187,7 +187,7 @@ func newUser(username string) (*User, []error) {
 		} else if hd == nil {
 			errors = append(errors, fmt.Errorf("home directory is nil"))
 		}
-		
+
 		if len(errors) > 0 {
 			return nil, errors
 		}
@@ -210,7 +210,7 @@ func newUser(username string) (*User, []error) {
 		} else if hd == nil {
 			errors = append(errors, fmt.Errorf("home directory is nil"))
 		}
-		
+
 		if len(errors) > 0 {
 			return nil, errors
 		}
@@ -233,7 +233,7 @@ func newUser(username string) (*User, []error) {
 		} else if hd == nil {
 			errors = append(errors, fmt.Errorf("home directory is nil"))
 		}
-		
+
 		if len(errors) > 0 {
 			return nil, errors
 		}
@@ -268,7 +268,7 @@ func newUser(username string) (*User, []error) {
 		defer cleanup_files(filename, filename_stdout, filename_stderr)
 
 		ioutil.WriteFile(filename, []byte(command_data), 0600)
-		full_command := command + " < " + filename +  " > " + filename_stdout + " 2> " + filename_stderr + " | touch " + filename_stdout + " && touch " + filename_stderr
+		full_command := command + " < " + filename + " > " + filename_stdout + " 2> " + filename_stderr + " | touch " + filename_stdout + " && touch " + filename_stderr
 		execute_unsafe_command_simple(full_command)
 
 		if _, opening_stdout_error := os.Stat(filename_stdout); opening_stdout_error == nil {
@@ -335,7 +335,7 @@ func newUser(username string) (*User, []error) {
 		filename_stderr := directory + "/" + fmt.Sprintf("%v%s-stderr.sql", time_now, string(uuid))
 		defer cleanup_files("", filename_stdout, filename_stderr)
 
-		full_command := command +  " > " + filename_stdout + " 2> " + filename_stderr + " | touch " + filename_stdout + " && touch " + filename_stderr
+		full_command := command + " > " + filename_stdout + " 2> " + filename_stderr + " | touch " + filename_stdout + " && touch " + filename_stderr
 		execute_unsafe_command_simple(full_command)
 
 		if _, opening_stdout_error := os.Stat(filename_stdout); opening_stdout_error == nil {
@@ -383,15 +383,15 @@ func newUser(username string) (*User, []error) {
 		return stdout_lines, nil
 	}
 
-	getAttribute := func(attribute string) (*json.Value,[]error) {
+	getAttribute := func(attribute string) (*json.Value, []error) {
 		var errors []error
 		//todo validate attribute
 
 		shell_command := "dscl . read /Users/" + getUsername() + " " + attribute
 		std_outs, std_errors := executeUnsafeCommandUsingFilesWithoutInputFile(shell_command)
-		
+
 		if std_errors != nil {
-			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)}, std_errors...)
 			errors = append(errors, std_errors...)
 		}
 
@@ -404,15 +404,15 @@ func newUser(username string) (*User, []error) {
 			return nil, errors
 		} else {
 			for _, std_out := range std_outs {
-				if strings.Contains(std_out, attribute + ": ") {
-					raw_path := strings.TrimPrefix(std_out, attribute + ":")
+				if strings.Contains(std_out, attribute+": ") {
+					raw_path := strings.TrimPrefix(std_out, attribute+":")
 					raw_path = strings.TrimSpace(raw_path)
 					json_value := json.NewValue(raw_path)
 					return json_value, nil
 				}
 			}
 
-			errors = append(errors, fmt.Errorf("unable to determine if attribute" + attribute + " or not"))
+			errors = append(errors, fmt.Errorf("User: unable to determine if attribute exists "+attribute+" or not command: "+shell_command))
 			return nil, errors
 		}
 	}
@@ -421,10 +421,10 @@ func newUser(username string) (*User, []error) {
 		var errors []error
 		shell_command := "dscl . read /Users/" + getUsername() + " RecordName"
 		std_outs, std_errors := executeUnsafeCommandUsingFilesWithoutInputFile(shell_command)
-		
+
 		result := false
 		if std_errors != nil {
-			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)}, std_errors...)
 			errors = append(errors, std_errors...)
 		}
 
@@ -445,7 +445,7 @@ func newUser(username string) (*User, []error) {
 				}
 			}
 
-			errors = append(errors, fmt.Errorf("unable to determine if the user exists or not"))
+			errors = append(errors, fmt.Errorf("User: unable to determine if the user exists or not command: "+shell_command))
 			return nil, errors
 		}
 	}
@@ -454,7 +454,7 @@ func newUser(username string) (*User, []error) {
 		shell_command := "dscl . -create /Users/" + getUsername()
 		_, std_errors := executeUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_errors != nil {
-			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)}, std_errors...)
 			return std_errors
 		}
 		return nil
@@ -464,7 +464,7 @@ func newUser(username string) (*User, []error) {
 		shell_command := "dscl . -delete /Users/" + getUsername()
 		_, std_errors := executeUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_errors != nil {
-			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)}, std_errors...)
 			return std_errors
 		}
 		return nil
@@ -487,7 +487,7 @@ func newUser(username string) (*User, []error) {
 		shell_command := "dscl . -create /Users/" + getUsername() + " UniqueID " + strconv.FormatUint(unique_id, 10)
 		_, std_errors := executeUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_errors != nil {
-			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)}, std_errors...)
 			return std_errors
 		}
 		return nil
@@ -500,7 +500,7 @@ func newUser(username string) (*User, []error) {
 		shell_command := "dscl . -create /Users/" + getUsername() + " Password '" + password + "'"
 		_, std_errors := executeUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_errors != nil {
-			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)}, std_errors...)
 			return std_errors
 		}
 		return nil
@@ -511,7 +511,7 @@ func newUser(username string) (*User, []error) {
 		if getAttribute_errors != nil {
 			return nil, getAttribute_errors
 		}
-		
+
 		uint64_value, uint64_value_errors := attribute_value.GetUInt64()
 		if uint64_value_errors != nil {
 			return nil, uint64_value_errors
@@ -525,7 +525,7 @@ func newUser(username string) (*User, []error) {
 		if getAttribute_errors != nil {
 			return nil, getAttribute_errors
 		}
-		
+
 		uint64_value, uint64_value_errors := attribute_value.GetUInt64()
 		if uint64_value_errors != nil {
 			return nil, uint64_value_errors
@@ -539,14 +539,13 @@ func newUser(username string) (*User, []error) {
 		if primary_group_id_errors != nil {
 			return nil, primary_group_id_errors
 		}
-		
-		
+
 		var errors []error
-		shell_command := "dscl . -search /Groups PrimaryGroupID " +  strconv.FormatUint(*primary_group_id, 10)
+		shell_command := "dscl . -search /Groups PrimaryGroupID " + strconv.FormatUint(*primary_group_id, 10)
 		std_outs, std_errors := executeUnsafeCommandUsingFilesWithoutInputFile(shell_command)
-		
+
 		if std_errors != nil {
-			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)}, std_errors...)
 			errors = append(errors, std_errors...)
 		}
 
@@ -565,7 +564,7 @@ func newUser(username string) (*User, []error) {
 				}
 			}
 
-			errors = append(errors, fmt.Errorf("unable to determine if group exists or not"))
+			errors = append(errors, fmt.Errorf("User: unable to determine if group exists or not command: "+shell_command))
 			return nil, errors
 		}
 	}
@@ -574,7 +573,7 @@ func newUser(username string) (*User, []error) {
 		shell_command := "dscl . -create /Users/" + getUsername() + " PrimaryGroupID " + strconv.FormatUint(primary_group_id, 10)
 		_, std_errors := executeUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_errors != nil {
-			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)}, std_errors...)
 			return std_errors
 		}
 		return nil
@@ -584,7 +583,7 @@ func newUser(username string) (*User, []error) {
 		shell_command := "dseditgroup -o edit -t user -a " + getUsername() + " com.apple.access_ssh"
 		_, std_errors := executeUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_errors != nil {
-			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)}, std_errors...)
 			return std_errors
 		}
 		return nil
@@ -598,8 +597,8 @@ func newUser(username string) (*User, []error) {
 			if strings.Contains(error_string, "Record was not found") {
 				return nil
 			}
-			
-			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)}, std_errors...)
 			return std_errors
 		}
 		return nil
@@ -607,11 +606,11 @@ func newUser(username string) (*User, []error) {
 
 	createHomeDirectoryAbsoluteDirectory := func(absolute_directory AbsoluteDirectory) []error {
 		//todo clone absolute_directory
-		
+
 		shell_command := "dscl . -create /Users/" + getUsername() + " NFSHomeDirectory " + absolute_directory.GetPathAsString()
 		_, std_errors := executeUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_errors != nil {
-			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)}, std_errors...)
 			return std_errors
 		}
 		return nil
@@ -632,7 +631,7 @@ func newUser(username string) (*User, []error) {
 		shell_command := "dscl . -create /Users/" + getUsername() + " UserShell /bin/bash"
 		_, std_errors := executeUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_errors != nil {
-			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)}, std_errors...)
 			return std_errors
 		}
 		return nil
@@ -641,7 +640,7 @@ func newUser(username string) (*User, []error) {
 	process_clean_up := func() {
 		for {
 			get_or_set_status("running")
-			time.Sleep(1 * time.Nanosecond) 
+			time.Sleep(1 * time.Nanosecond)
 			absolute_path_filename_to_delete, absolute_path_filename_to_delete_error := get_or_set_files(nil, "pull")
 			if absolute_path_filename_to_delete_error != nil {
 				fmt.Println(absolute_path_filename_to_delete_error)
@@ -655,7 +654,6 @@ func newUser(username string) (*User, []error) {
 			}
 		}
 	}
-
 
 	x := User{
 		Validate: func() []error {
@@ -751,7 +749,7 @@ func newUser(username string) (*User, []error) {
 				return stdout_lines, errors
 			}
 
-			full_command := "ssh -i " + ssh_directory.GetPathAsString() + "/" + destination_user.GetFullyQualifiedUsername() + " " + destination_user.GetFullyQualifiedUsername() + " '" + command_escaped +  "' > " + filename_stdout + " 2> " + filename_stderr + " | touch " + filename_stdout + " && touch " + filename_stderr
+			full_command := "ssh -i " + ssh_directory.GetPathAsString() + "/" + destination_user.GetFullyQualifiedUsername() + " " + destination_user.GetFullyQualifiedUsername() + " '" + command_escaped + "' > " + filename_stdout + " 2> " + filename_stderr + " | touch " + filename_stdout + " && touch " + filename_stderr
 			fmt.Println(full_command)
 			execute_unsafe_command_simple(full_command)
 
@@ -802,7 +800,7 @@ func newUser(username string) (*User, []error) {
 		ExecuteUnsafeCommandUsingFiles: func(command string, command_data string) ([]string, []error) {
 			return executeUnsafeCommandUsingFiles(command, command_data)
 		},
-		ExecuteUnsafeCommandUsingFilesWithoutInputFile: func(command string)  ([]string, []error) {
+		ExecuteUnsafeCommandUsingFilesWithoutInputFile: func(command string) ([]string, []error) {
 			return executeUnsafeCommandUsingFilesWithoutInputFile(command)
 		},
 	}
@@ -817,7 +815,5 @@ func newUser(username string) (*User, []error) {
 
 	go process_clean_up()
 
-
 	return &x, nil
 }
-

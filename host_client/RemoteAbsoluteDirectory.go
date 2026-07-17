@@ -1,19 +1,20 @@
 package host_client
 
 import (
-	validate "github.com/matehaxor03/holistic_validator/validate"
 	"fmt"
 	"path/filepath"
+
+	validate "github.com/matehaxor03/holistic_validator/validate"
 )
 
 type RemoteAbsoluteDirectory struct {
-	Validate func() []error
-	Create func() []error
+	Validate             func() []error
+	Create               func() []error
 	CreateIfDoesNotExist func() []error
-	DeleteIfExists func() []error
-	Exists func() (*bool, []error)
-	GetPath func() []string
-	GetPathAsString func() string
+	DeleteIfExists       func() []error
+	Exists               func() (*bool, []error)
+	GetPath              func() []string
+	GetPathAsString      func() string
 }
 
 func newRemoteAbsoluteDirectory(source_user User, host_user HostUser, path []string) (*RemoteAbsoluteDirectory, []error) {
@@ -47,7 +48,7 @@ func newRemoteAbsoluteDirectory(source_user User, host_user HostUser, path []str
 	}
 
 	getPathAsString := func() string {
-		return 	"/" + filepath.Join(getPath()...)
+		return "/" + filepath.Join(getPath()...)
 	}
 
 	validate := func() []error {
@@ -73,14 +74,14 @@ func newRemoteAbsoluteDirectory(source_user User, host_user HostUser, path []str
 		temp_host_user := getHostUser()
 		shell_command := "ssh -i ~/.ssh/" + temp_host_user.GetFullyQualifiedUsername() + " " + host_user.GetFullyQualifiedUsername() + " '[ -d " + getPathAsString() + " ] && echo true || echo false'"
 		std_outs, std_errors := temp_source_user.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
-		
+
 		if std_errors != nil {
-			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)}, std_errors...)
 			return nil, std_errors
 		}
 
 		if len(std_outs) != 0 {
-			errors = append(errors, fmt.Errorf("RemoteAboslouteDirectory exists std_out has zero output"))
+			errors = append(errors, fmt.Errorf("RemoteAboslouteDirectory: exists std_out has zero output"))
 			return nil, errors
 		}
 
@@ -95,7 +96,7 @@ func newRemoteAbsoluteDirectory(source_user User, host_user HostUser, path []str
 			return &result, nil
 		}
 
-		errors = append(errors, fmt.Errorf("RemoteAboslouteDirectory exists unable to determine if it exists"))
+		errors = append(errors, fmt.Errorf("RemoteAboslouteDirectory: exists unable to determine if it exists command: "+shell_command))
 		return nil, errors
 	}
 
@@ -104,7 +105,7 @@ func newRemoteAbsoluteDirectory(source_user User, host_user HostUser, path []str
 		temp_host_user := getHostUser()
 		shell_command := "ssh -i ~/.ssh/" + temp_host_user.GetFullyQualifiedUsername() + " " + host_user.GetFullyQualifiedUsername() + "'mkdir " + getPathAsString() + "'"
 		_, std_errors := temp_source_user.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
-		
+
 		if std_errors != nil {
 			return std_errors
 		}
@@ -117,7 +118,7 @@ func newRemoteAbsoluteDirectory(source_user User, host_user HostUser, path []str
 		temp_host_user := getHostUser()
 		shell_command := "ssh -i ~/.ssh/" + temp_host_user.GetFullyQualifiedUsername() + " " + host_user.GetFullyQualifiedUsername() + "'rm -fr " + getPathAsString() + "'"
 		_, std_errors := temp_source_user.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
-		
+
 		if std_errors != nil {
 			return std_errors
 		}
@@ -167,7 +168,7 @@ func newRemoteAbsoluteDirectory(source_user User, host_user HostUser, path []str
 		Exists: func() (*bool, []error) {
 			return exists()
 		},
-		GetPath: func() ([]string) {
+		GetPath: func() []string {
 			return getPath()
 		},
 		GetPathAsString: func() string {
@@ -186,4 +187,3 @@ func newRemoteAbsoluteDirectory(source_user User, host_user HostUser, path []str
 
 	return &x, nil
 }
-

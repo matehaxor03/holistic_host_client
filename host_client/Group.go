@@ -1,24 +1,25 @@
 package host_client
 
 import (
-	validate "github.com/matehaxor03/holistic_validator/validate"
-	common "github.com/matehaxor03/holistic_common/common"
-	json "github.com/matehaxor03/holistic_json/json"	
-	"strings"
 	"fmt"
 	"strconv"
+	"strings"
+
+	common "github.com/matehaxor03/holistic_common/common"
+	json "github.com/matehaxor03/holistic_json/json"
+	validate "github.com/matehaxor03/holistic_validator/validate"
 )
 
 type Group struct {
-	Validate func() []error
-	Create func() []error
-	Delete func() []error
-	DeleteIfExists func() []error
-	GetGroupName func() string
-	Exists func() (*bool, []error)
-	SetUniqueId func(unique_id uint64) []error
+	Validate          func() []error
+	Create            func() []error
+	Delete            func() []error
+	DeleteIfExists    func() []error
+	GetGroupName      func() string
+	Exists            func() (*bool, []error)
+	SetUniqueId       func(unique_id uint64) []error
 	GetPrimaryGroupId func() (*uint64, []error)
-	AddUser func(user User) []error
+	AddUser           func(user User) []error
 }
 
 func newGroup(group_name string) (*Group, []error) {
@@ -57,15 +58,15 @@ func newGroup(group_name string) (*Group, []error) {
 		return nil
 	}
 
-	getAttribute := func(attribute string) (*json.Value,[]error) {
+	getAttribute := func(attribute string) (*json.Value, []error) {
 		var errors []error
 		//todo validate attribute
 
 		shell_command := "dscl . read /Groups/" + getGroupName() + " " + attribute
 		std_outs, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
-		
+
 		if std_errors != nil {
-			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)}, std_errors...)
 			errors = append(errors, std_errors...)
 		}
 
@@ -78,28 +79,27 @@ func newGroup(group_name string) (*Group, []error) {
 			return nil, errors
 		} else {
 			for _, std_out := range std_outs {
-				if strings.Contains(std_out, attribute + ": ") {
-					raw_path := strings.TrimPrefix(std_out, attribute + ":")
+				if strings.Contains(std_out, attribute+": ") {
+					raw_path := strings.TrimPrefix(std_out, attribute+":")
 					raw_path = strings.TrimSpace(raw_path)
 					json_value := json.NewValue(raw_path)
 					return json_value, nil
 				}
 			}
 
-			errors = append(errors, fmt.Errorf("unable to determine if attribute" + attribute + " or not"))
+			errors = append(errors, fmt.Errorf("Group: unable to determine if attribute exists "+attribute+" or not command: "+shell_command))
 			return nil, errors
 		}
 	}
-
 
 	exists := func() (*bool, []error) {
 		var errors []error
 		shell_command := "dscl . read /Groups/" + getGroupName() + " RecordName"
 		std_outs, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
-		
+
 		result := false
 		if std_errors != nil {
-			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)}, std_errors...)
 			errors = append(errors, std_errors...)
 		}
 
@@ -120,7 +120,7 @@ func newGroup(group_name string) (*Group, []error) {
 				}
 			}
 
-			errors = append(errors, fmt.Errorf("unable to determine if the group exists or not"))
+			errors = append(errors, fmt.Errorf("Group: unable to determine if the group exists or not command: "+shell_command))
 			return nil, errors
 		}
 	}
@@ -129,7 +129,7 @@ func newGroup(group_name string) (*Group, []error) {
 		shell_command := "dscl . -create /Groups/" + getGroupName()
 		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_errors != nil {
-			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)}, std_errors...)
 			return std_errors
 		}
 		return nil
@@ -139,7 +139,7 @@ func newGroup(group_name string) (*Group, []error) {
 		shell_command := "dscl . -delete /Groups/" + getGroupName()
 		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_errors != nil {
-			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)}, std_errors...)
 			return std_errors
 		}
 		return nil
@@ -162,7 +162,7 @@ func newGroup(group_name string) (*Group, []error) {
 		shell_command := "dscl . -create /Groups/" + getGroupName() + " gid " + strconv.FormatUint(unique_id, 10)
 		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_errors != nil {
-			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)}, std_errors...)
 			return std_errors
 		}
 		return nil
@@ -173,7 +173,7 @@ func newGroup(group_name string) (*Group, []error) {
 		if getAttribute_errors != nil {
 			return nil, getAttribute_errors
 		}
-		
+
 		uint64_value, uint64_value_errors := attribute_value.GetUInt64()
 		if uint64_value_errors != nil {
 			return nil, uint64_value_errors
@@ -186,7 +186,7 @@ func newGroup(group_name string) (*Group, []error) {
 		shell_command := "dscl . append /Groups/" + getGroupName() + " GroupMembership " + user.GetUsername()
 		_, std_errors := bashCommand.ExecuteUnsafeCommandUsingFilesWithoutInputFile(shell_command)
 		if std_errors != nil {
-			std_errors = append([]error{fmt.Errorf("%s", shell_command)} , std_errors...)
+			std_errors = append([]error{fmt.Errorf("%s", shell_command)}, std_errors...)
 			return std_errors
 		}
 		return nil
@@ -231,4 +231,3 @@ func newGroup(group_name string) (*Group, []error) {
 
 	return &x, nil
 }
-
